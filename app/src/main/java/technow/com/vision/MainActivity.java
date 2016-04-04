@@ -316,13 +316,14 @@ public class MainActivity extends AppCompatActivity {
             //Set your API-Key from https://console.developers.google.com/
             list.setKey("");
             TranslationsListResponse response = list.execute();
+            ArrayList<String> espanyol = new ArrayList<>();
             for(TranslationsResource tr : response.getTranslations()) {
-                System.out.println(tr.getTranslatedText());
+                espanyol.add(tr.getTranslatedText());
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
+        return espanyol;
     }
 
 
