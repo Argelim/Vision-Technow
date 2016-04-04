@@ -24,6 +24,9 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.translate.Translate;
+import com.google.api.services.translate.model.TranslationsListResponse;
+import com.google.api.services.translate.model.TranslationsResource;
 import com.google.api.services.vision.v1.Vision;
 import com.google.api.services.vision.v1.VisionRequestInitializer;
 import com.google.api.services.vision.v1.model.AnnotateImageRequest;
@@ -35,8 +38,10 @@ import com.google.api.services.vision.v1.model.Image;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -46,10 +51,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int GALLERY_IMAGE_REQUEST = 1;
     public static final int CAMERA_PERMISSIONS_REQUEST = 2;
+    public static final int WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST = 3;
+
     public static final int CAMERA_IMAGE_REQUEST = 3;
 
     private TextView mImageDetails;
     private ImageView mMainImage;
+    private Uri imagenGaleria;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,18 +119,51 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == GALLERY_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-            uploadImage(data.getData());
+            imagenGaleria = data.getData();
+//            uploadImage(data.getData());
+            saveImage(imagenGaleria, "4");
         }
         else if(requestCode == CAMERA_IMAGE_REQUEST && resultCode == RESULT_OK) {
-            uploadImage(Uri.fromFile(getCameraFile()));
+            Uri uri = Uri.fromFile(getCameraFile());
+//            uploadImage(uri);
+            saveImage(uri, "2");
         }
     }
+
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (PermissionUtils.permissionGranted(requestCode, CAMERA_PERMISSIONS_REQUEST, grantResults)) {
             startCamera();
+        }
+        if(PermissionUtils.permissionGranted(requestCode, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, grantResults)){
+            saveImage(imagenGaleria, "4");
+        }
+    }
+
+    private void saveImage(Uri data, String nombre) {
+        if (PermissionUtils.requestPermission(this, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
+            Log.d("FILE", dir.getAbsolutePath());
+            Log.d("Creado", String.valueOf(dir.exists()));
+            if (!dir.exists()) {
+                dir.mkdir();
+                Log.d("Creado", "OK");
+            }
+            File file = new File(dir.getAbsolutePath(), nombre + ".png");
+            try {
+                file.createNewFile();
+                Log.d("FILE", file.getAbsolutePath());
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), data);
+                FileOutputStream fos = new FileOutputStream(file);
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                fos.flush();
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -239,10 +280,16 @@ public class MainActivity extends AppCompatActivity {
         String message = "I found these things:\n\n";
 
         List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
+        ArrayList<String> ingles = new ArrayList<>();
+
         if (labels != null) {
             for (EntityAnnotation label : labels) {
-                message += String.format("%s",label.getDescription());
-                message += "\n";
+                ingles.add(label.getDescription());
+            }
+            ArrayList<String> espanyol = traducir(ingles);
+            for (String spanish : espanyol){
+                message += String.format("%s", spanish);
+                message += ", ";
             }
         } else {
             message += "nothing";
@@ -250,4 +297,33 @@ public class MainActivity extends AppCompatActivity {
 
         return message;
     }
+
+    private ArrayList<String> traducir(ArrayList<String> ingles) {
+        try {
+            // See comments on
+            //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
+            // on options to set
+            Translate t = new Translate.Builder(
+                    com.google.api.client.googleapis.javanet.GoogleNetHttpTransport.newTrustedTransport()
+                    , com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), null)
+                    //Need to update this to your App-Name
+                    .setApplicationName("Vision-Technow")
+                    .build();
+            Translate.Translations.List list = t.new Translations().list(
+                   ingles,
+                    //Target language
+                    "ES");
+            //Set your API-Key from https://console.developers.google.com/
+            list.setKey("");
+            TranslationsListResponse response = list.execute();
+            for(TranslationsResource tr : response.getTranslations()) {
+                System.out.println(tr.getTranslatedText());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
 }
