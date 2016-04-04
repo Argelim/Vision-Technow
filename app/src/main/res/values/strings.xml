@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Vision</string>
     <string name="action_settings">Settings</string>
+    <string name="image_picker_error">1</string>
+    <string name="loading_message">loading</string>
+    <string name="dialog_select_camera">camera</string>
+    <string name="dialog_select_gallery">select galery</string>
+    <string name="dialog_select_prompt">prompt</string>
 </resources>
