@@ -8,13 +8,13 @@ import android.widget.ImageView;
 public class Imagen {
 
     private ImageView imageView;
-    private String descripcion,titulo;
+    private String descripcion,fecha,path;
     private int id;
 
-    public Imagen(String descripcion, String titulo, int id) {
+    public Imagen(String descripcion, String path, String fecha) {
         this.descripcion = descripcion;
-        this.titulo = titulo;
-        this.id = id;
+        this.fecha = fecha;
+        this.path = path;
     }
 
     public ImageView getImageView() {
@@ -33,13 +33,6 @@ public class Imagen {
         this.descripcion = descripcion;
     }
 
-    public String getTitulo() {
-        return titulo;
-    }
-
-    public void setTitulo(String titulo) {
-        this.titulo = titulo;
-    }
 
     public int getId() {
         return id;

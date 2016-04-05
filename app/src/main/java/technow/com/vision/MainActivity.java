@@ -1,8 +1,6 @@
 package technow.com.vision;
 
 import android.Manifest;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -50,6 +48,8 @@ import java.util.concurrent.Semaphore;
 import jp.wasabeef.recyclerview.animators.FlipInBottomXAnimator;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
+import sqlite.bd_sqlite;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String CLOUD_VISION_API_KEY = "AIzaSyC2zS9AvR5at9m_mUjOxQMi41w5jD-5qko";
@@ -65,8 +65,12 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
+<<<<<<< HEAD
     private String fecha, descripcion, path;
     private Semaphore semaphore;
+=======
+    private bd_sqlite bd;
+>>>>>>> refs/remotes/origin/master
 
 
     @Override
@@ -75,7 +79,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        
+
+        bd = new bd_sqlite(getApplicationContext(),"vision_technow",1);
+
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         if (fab != null) {
             fab.setOnClickListener(new View.OnClickListener() {
@@ -103,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imagens = new ArrayList<>();
+<<<<<<< HEAD
         Imagen i = new Imagen("Hola esto es una prueba","prueba",001);
         Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2",001);
         Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3",001);
@@ -111,6 +118,9 @@ public class MainActivity extends AppCompatActivity {
         imagens.add(i2);
 
 
+=======
+        
+>>>>>>> refs/remotes/origin/master
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
@@ -127,7 +137,6 @@ public class MainActivity extends AppCompatActivity {
         semaphore = new Semaphore(1);
 
     }
-
 
     public void startGalleryChooser() {
         Intent intent = new Intent();
@@ -387,7 +396,7 @@ public class MainActivity extends AppCompatActivity {
                     //Target language
                     "ES");
             //Set your API-Key from https://console.developers.google.com/
-            list.setKey("");
+            list.setKey("AIzaSyAN4Vt8bJX0A5NLNxl4k3wVpe4lAX8x7VA");
             TranslationsListResponse response = list.execute();
             for(TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
