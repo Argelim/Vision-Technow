@@ -65,13 +65,9 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
-<<<<<<< HEAD
     private String fecha, descripcion, path;
     private Semaphore semaphore;
-=======
     private bd_sqlite bd;
->>>>>>> refs/remotes/origin/master
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,14 +88,14 @@ public class MainActivity extends AppCompatActivity {
                     builder.setItems(item, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            Imagen im = new Imagen("prueba", "p", 002);
+                            Imagen im = new Imagen("prueba", "p", "");
                             if(which == 0){
-//                                startCamera();
-                                listaImagenes.removeItem(im);
+                                startCamera();
+//                                listaImagenes.removeItem(0);
                             }
                             if(which == 1){
-//                                startGalleryChooser();
-                                listaImagenes.addItem(im);
+                                startGalleryChooser();
+//                                listaImagenes.addItem(im);
                             }
                         }
                     });
@@ -109,18 +105,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imagens = new ArrayList<>();
-<<<<<<< HEAD
-        Imagen i = new Imagen("Hola esto es una prueba","prueba",001);
-        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2",001);
-        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3",001);
+        Imagen i = new Imagen("Hola esto es una prueba","prueba","");
+        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2","");
+        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3","");
 
         imagens.add(i);
         imagens.add(i2);
 
-
-=======
-        
->>>>>>> refs/remotes/origin/master
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
@@ -331,7 +322,7 @@ public class MainActivity extends AppCompatActivity {
 
             protected void onPostExecute(String result) {
                // mImageDetails.setText(result);
-                Toast.makeText(MainActivity.this, "Terminado", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, result, Toast.LENGTH_SHORT).show();
                 semaphore.release();
             }
         }.execute();
