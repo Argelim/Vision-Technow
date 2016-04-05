@@ -69,4 +69,14 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
             Log.d("DEBUG","Se le referenciado");
         }
     }
+
+    public void addItem(Imagen imagen){
+        MainActivity.imagens.add(imagen);
+        notifyItemInserted(MainActivity.imagens.size()-1);
+    }
+
+    public void removeItem(int pos){
+        MainActivity.imagens.remove(pos);
+        notifyItemRemoved(pos);
+    }
 }

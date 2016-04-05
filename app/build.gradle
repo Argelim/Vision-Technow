@@ -30,4 +30,5 @@ dependencies {
     compile 'com.google.apis:google-api-services-translate:v2-rev44-1.21.0'
     compile 'com.android.support:support-v4:23.2.1'
     compile 'com.google.apis:google-api-services-vision:v1-rev2-1.21.0'
+    compile 'jp.wasabeef:recyclerview-animators:2.2.1'
 }
