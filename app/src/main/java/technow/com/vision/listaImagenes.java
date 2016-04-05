@@ -19,6 +19,10 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     private static int SOLTADO = 1;
     private static int SCROLL = 3;
 
+
+    public listaImagenes() {
+    }
+
     public listaImagenes(RecyclerView recyclerView, Context context) {
         this.recyclerView = recyclerView;
         this.context = context;
