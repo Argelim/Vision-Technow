@@ -3,6 +3,7 @@ package technow.com.vision;
 import android.Manifest;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -10,6 +11,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -17,7 +20,6 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpTransport;
@@ -52,12 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int GALLERY_IMAGE_REQUEST = 1;
     public static final int CAMERA_PERMISSIONS_REQUEST = 2;
     public static final int WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST = 3;
-
     public static final int CAMERA_IMAGE_REQUEST = 3;
-
     private Uri imagenGaleria;
     public static ArrayList<Imagen> imagens;
-
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
@@ -69,6 +68,29 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        if (fab != null) {
+            fab.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    String [] item = {"Desde la camara", "Desde la galeria"};
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setItems(item, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            if(which == 0){
+                                startCamera();
+                            }
+                            if(which == 1){
+                                startGalleryChooser();
+                            }
+                        }
+                    });
+                    builder.create().show();
+                }
+            });
+        }
 
         imagens = new ArrayList<>();
         Imagen i = new Imagen("Hola esto es una prueba","prueba",001);
@@ -103,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
+
 
     public void startGalleryChooser() {
         Intent intent = new Intent();
@@ -311,6 +334,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private ArrayList<String> traducir(ArrayList<String> ingles) {
+        ArrayList<String> espanyol = new ArrayList<>();
         try {
             // See comments on
             //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
@@ -328,7 +352,6 @@ public class MainActivity extends AppCompatActivity {
             //Set your API-Key from https://console.developers.google.com/
             list.setKey("");
             TranslationsListResponse response = list.execute();
-            ArrayList<String> espanyol = new ArrayList<>();
             for(TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
             }
