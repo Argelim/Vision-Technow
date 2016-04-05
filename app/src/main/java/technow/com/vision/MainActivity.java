@@ -365,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
                     //Target language
                     "ES");
             //Set your API-Key from https://console.developers.google.com/
-            list.setKey("");
+            list.setKey("AIzaSyAN4Vt8bJX0A5NLNxl4k3wVpe4lAX8x7VA");
             TranslationsListResponse response = list.execute();
             for(TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
