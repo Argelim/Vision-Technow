@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -19,6 +20,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -136,7 +138,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startCamera() {
-        if (PermissionUtils.requestPermission(this, CAMERA_PERMISSIONS_REQUEST, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)) {
+        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (PermissionUtils.requestPermission(this, CAMERA_PERMISSIONS_REQUEST, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)) {
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getCameraFile()));
+                startActivityForResult(intent, CAMERA_IMAGE_REQUEST);
+            }
+        }else{
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getCameraFile()));
             startActivityForResult(intent, CAMERA_IMAGE_REQUEST);
@@ -178,28 +186,51 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void saveImage(Uri data, String nombre) {
-        if (PermissionUtils.requestPermission(this, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
-            Log.d("FILE", dir.getAbsolutePath());
-            Log.d("Creado", String.valueOf(dir.exists()));
-            if (!dir.exists()) {
-                dir.mkdir();
-                Log.d("Creado", "OK");
+    private void saveImage(final Uri data, final String nombre) {
+        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (PermissionUtils.requestPermission(this, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                prepareToSave(data, nombre);
             }
-            File file = new File(dir.getAbsolutePath(), nombre + ".png");
-            try {
-                file.createNewFile();
-                Log.d("FILE", file.getAbsolutePath());
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), data);
-                FileOutputStream fos = new FileOutputStream(file);
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                fos.flush();
-                fos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        }else{
+            prepareToSave(data, nombre);
         }
+    }
+
+    private void prepareToSave(final Uri data, final String nombre){
+        new AsyncTask<Void, Integer, Boolean>() {
+
+            @Override
+            protected Boolean doInBackground(Void... params) {
+                boolean creado;
+                File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
+                Log.d("FILE", dir.getAbsolutePath());
+                Log.d("Creado", String.valueOf(dir.exists()));
+                if (!dir.exists()) {
+                    dir.mkdir();
+                    Log.d("Creado", "OK");
+                }
+                File oculto = new File(dir.getPath(), ".media");
+                if(!oculto.exists()){
+                    oculto.mkdir();
+                }
+                File file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
+                try {
+                    file.createNewFile();
+                    Log.d("FILE", file.getAbsolutePath());
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
+                    FileOutputStream fos = new FileOutputStream(file);
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fos);
+                    fos.flush();
+                    fos.close();
+                    creado = true;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    creado = false;
+                }
+                return creado;
+            }
+
+        }.execute();
     }
 
     public void uploadImage(Uri uri) {
