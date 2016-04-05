@@ -1,8 +1,6 @@
 package technow.com.vision;
 
 import android.Manifest;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -45,6 +43,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import sqlite.bd_sqlite;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String CLOUD_VISION_API_KEY = "AIzaSyC2zS9AvR5at9m_mUjOxQMi41w5jD-5qko";
@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
+    private bd_sqlite bd;
 
 
     @Override
@@ -68,7 +69,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        
+
+        bd = new bd_sqlite(getApplicationContext(),"vision_technow",1);
+
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         if (fab != null) {
             fab.setOnClickListener(new View.OnClickListener() {
@@ -93,25 +96,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imagens = new ArrayList<>();
-        Imagen i = new Imagen("Hola esto es una prueba","prueba",001);
-        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2",001);
-        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3",001);
-
-        imagens.add(i);
-        imagens.add(i2);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-        imagens.add(i3);
-
+        
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         //recyclerView.setHasFixedSize(true);
 
@@ -125,7 +110,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
-
 
     public void startGalleryChooser() {
         Intent intent = new Intent();
