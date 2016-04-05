@@ -36,7 +36,6 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -44,6 +43,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Semaphore;
+
+import jp.wasabeef.recyclerview.animators.FlipInBottomXAnimator;
+import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
 import sqlite.bd_sqlite;
 
@@ -62,8 +65,9 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
+    private String fecha, descripcion, path;
+    private Semaphore semaphore;
     private bd_sqlite bd;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,11 +88,14 @@ public class MainActivity extends AppCompatActivity {
                     builder.setItems(item, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            Imagen im = new Imagen("prueba", "p", "");
                             if(which == 0){
                                 startCamera();
+//                                listaImagenes.removeItem(0);
                             }
                             if(which == 1){
                                 startGalleryChooser();
+//                                listaImagenes.addItem(im);
                             }
                         }
                     });
@@ -98,8 +105,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imagens = new ArrayList<>();
-        
+        Imagen i = new Imagen("Hola esto es una prueba","prueba","");
+        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2","");
+        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3","");
+
+        imagens.add(i);
+        imagens.add(i2);
+
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
+        recyclerView.setItemAnimator(new SlideInLeftAnimator());
+        recyclerView.getItemAnimator().setRemoveDuration(2000);
+
         //recyclerView.setHasFixedSize(true);
 
         listaImagenes = new listaImagenes(recyclerView,getApplicationContext());
@@ -109,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         layoutManager = new LinearLayoutManager(getApplicationContext());
 
         recyclerView.setLayoutManager(layoutManager);
-
+        semaphore = new Semaphore(1);
 
     }
 
@@ -137,7 +153,6 @@ public class MainActivity extends AppCompatActivity {
 
     public File getCameraFile() {
         File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-
         return new File(dir, FILE_NAME);
     }
 
@@ -147,12 +162,12 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == GALLERY_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
             imagenGaleria = data.getData();
-//            uploadImage(data.getData());
+            uploadImage(data.getData());
             saveImage(imagenGaleria, "4");
         }
         else if(requestCode == CAMERA_IMAGE_REQUEST && resultCode == RESULT_OK) {
             Uri uri = Uri.fromFile(getCameraFile());
-//            uploadImage(uri);
+            uploadImage(uri);
             saveImage(uri, "2");
         }
     }
@@ -185,6 +200,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             protected Boolean doInBackground(Void... params) {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 boolean creado;
                 File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
                 Log.d("FILE", dir.getAbsolutePath());
@@ -200,6 +220,7 @@ public class MainActivity extends AppCompatActivity {
                 File file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
                 try {
                     file.createNewFile();
+                    path = file.getPath();
                     Log.d("FILE", file.getAbsolutePath());
                     Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
                     FileOutputStream fos = new FileOutputStream(file);
@@ -222,7 +243,6 @@ public class MainActivity extends AppCompatActivity {
             try {
                 // scale the image to 800px to save on bandwidth
                 Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
-
                 callCloudVision(bitmap);
                // mMainImage.setImageBitmap(bitmap);
 
@@ -302,6 +322,8 @@ public class MainActivity extends AppCompatActivity {
 
             protected void onPostExecute(String result) {
                // mImageDetails.setText(result);
+                Toast.makeText(MainActivity.this, result, Toast.LENGTH_SHORT).show();
+                semaphore.release();
             }
         }.execute();
     }
