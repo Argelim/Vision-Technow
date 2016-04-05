@@ -1,7 +1,8 @@
 package technow.com.vision;
 
 import android.Manifest;
-import android.content.DialogInterface;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -9,14 +10,12 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
@@ -45,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
     private static final String CLOUD_VISION_API_KEY = "AIzaSyC2zS9AvR5at9m_mUjOxQMi41w5jD-5qko";
     public static final String FILE_NAME = "temp.jpg";
 
@@ -55,9 +55,13 @@ public class MainActivity extends AppCompatActivity {
 
     public static final int CAMERA_IMAGE_REQUEST = 3;
 
-    private TextView mImageDetails;
-    private ImageView mMainImage;
     private Uri imagenGaleria;
+    public static ArrayList<Imagen> imagens;
+
+    private RecyclerView recyclerView;
+    private listaImagenes listaImagenes;
+    private RecyclerView.LayoutManager layoutManager;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,31 +70,38 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder
-                        .setMessage(R.string.dialog_select_prompt)
-                        .setPositiveButton(R.string.dialog_select_gallery, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                startGalleryChooser();
-                            }
-                        })
-                        .setNegativeButton(R.string.dialog_select_camera, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                startCamera();
-                            }
-                        });
-                builder.create().show();
-            }
-        });
+        imagens = new ArrayList<>();
+        Imagen i = new Imagen("Hola esto es una prueba","prueba",001);
+        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2",001);
+        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3",001);
 
-        mImageDetails = (TextView) findViewById(R.id.image_details);
-        mMainImage = (ImageView) findViewById(R.id.main_image);
+        imagens.add(i);
+        imagens.add(i2);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+        imagens.add(i3);
+
+        recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
+        //recyclerView.setHasFixedSize(true);
+
+        listaImagenes = new listaImagenes(recyclerView,getApplicationContext());
+
+        recyclerView.setAdapter(listaImagenes);
+
+        layoutManager = new LinearLayoutManager(getApplicationContext());
+
+        recyclerView.setLayoutManager(layoutManager);
+
+
     }
 
     public void startGalleryChooser() {
@@ -111,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
 
     public File getCameraFile() {
         File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+
         return new File(dir, FILE_NAME);
     }
 
@@ -174,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
 
                 callCloudVision(bitmap);
-                mMainImage.setImageBitmap(bitmap);
+               // mMainImage.setImageBitmap(bitmap);
 
             } catch (IOException e) {
                 Log.d(TAG, "Image picking failed because " + e.getMessage());
@@ -188,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void callCloudVision(final Bitmap bitmap) throws IOException {
         // Switch text to loading
-        mImageDetails.setText(R.string.loading_message);
+        //mImageDetails.setText(R.string.loading_message);
 
         // Do the real work in an async task, because we need to use the network anyway
         new AsyncTask<Object, Void, String>() {
@@ -251,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             protected void onPostExecute(String result) {
-                mImageDetails.setText(result);
+               // mImageDetails.setText(result);
             }
         }.execute();
     }
