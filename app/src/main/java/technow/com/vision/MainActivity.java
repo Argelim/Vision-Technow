@@ -52,7 +52,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+
+import java.util.Collections;
+
 import java.util.GregorianCalendar;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -118,12 +122,6 @@ public class MainActivity extends AppCompatActivity {
 
         imagens = new ArrayList<>();
 
-        //carga la lista de imagenes por si las hay
-        imagens = bd.obtenerImagenes(getApplicationContext(), imagens);
-        if (!imagens.isEmpty()) {
-            cargaImagen();
-        }
-
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
@@ -137,6 +135,11 @@ public class MainActivity extends AppCompatActivity {
         //instanciamos el semaforo para más control de los hilos
         semaphore = new Semaphore(1);
 
+        //carga la lista de imagenes por si las hay
+        bd.obtenerImagenes(getApplicationContext(), listaImagenes);
+        if (!imagens.isEmpty()) {
+            Collections.reverse(imagens);
+        }
     }
 
     public void startGalleryChooser() {
@@ -188,18 +191,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Método que carga las imagenes
-     */
-    private void cargaImagen() {
-        Iterator<Imagen> iterator = imagens.iterator();
-        while (iterator.hasNext()) {
-            Imagen imagen = iterator.next();
-            File file = new File(imagen.getPath());
-            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(file);
-            imagen.setRequestCreator(requestCreator);
-        }
-    }
+
 
 
     @Override
@@ -266,12 +258,35 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             protected void onPostExecute(Boolean aBoolean) {
-                path = file.getPath();
-                Imagen imagen = new Imagen(descripcion, path, fecha);
+                path=file.getPath();
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTimeInMillis(System.currentTimeMillis());
+                fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
+                Imagen imagen = new Imagen(descripcion,path,fecha);
                 RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path));
                 imagen.setRequestCreator(requestCreator);
                 listaImagenes.addItem(imagen);
-                bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
+                insertarImagen(imagen);
+                semaphore.release();
+            }
+        }.execute();
+    }
+
+    private void insertarImagen(final Imagen imagen){
+        new AsyncTask<Void,Void,Void>(){
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
                 semaphore.release();
             }
         }.execute();
