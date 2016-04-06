@@ -4,11 +4,13 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -36,12 +38,19 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.RequestCreator;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
@@ -105,26 +114,24 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imagens = new ArrayList<>();
-        Imagen i = new Imagen("Hola esto es una prueba","prueba","");
-        Imagen i2 = new Imagen("Hola esto es una prueba2","prueba2","");
-        Imagen i3 = new Imagen("Hola esto es una prueba3","prueba3","");
 
-        imagens.add(i);
-        imagens.add(i2);
+        //carga la lista de imagenes por si las hay
+        imagens=bd.obtenerImagenes(getApplicationContext(),imagens);
+        if (!imagens.isEmpty()){
+            cargaImagen();
+        }
 
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
-
-        //recyclerView.setHasFixedSize(true);
-
+        //instanciamos el adapter del reciclador
         listaImagenes = new listaImagenes(recyclerView,getApplicationContext());
-
+        //le agregamos el adapter al reciclador
         recyclerView.setAdapter(listaImagenes);
-
+        //creamos un manejador para reciclador
         layoutManager = new LinearLayoutManager(getApplicationContext());
-
         recyclerView.setLayoutManager(layoutManager);
+        //instanciamos el semaforo para más control de los hilos
         semaphore = new Semaphore(1);
 
     }
@@ -172,6 +179,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Método que carga las imagenes
+     */
+    private void cargaImagen(){
+        Iterator<Imagen> iterator = imagens.iterator();
+        while (iterator.hasNext()){
+            Imagen imagen = iterator.next();
+            File file = new File(imagen.getPath());
+            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(file);
+            imagen.setRequestCreator(requestCreator);
+        }
+    }
 
 
     @Override
@@ -197,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void prepareToSave(final Uri data, final String nombre){
         new AsyncTask<Void, Integer, Boolean>() {
-
+            private File file;
             @Override
             protected Boolean doInBackground(Void... params) {
                 try {
@@ -217,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
                 if(!oculto.exists()){
                     oculto.mkdir();
                 }
-                File file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
+                file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
                 try {
                     file.createNewFile();
                     path = file.getPath();
@@ -235,6 +254,19 @@ public class MainActivity extends AppCompatActivity {
                 return creado;
             }
 
+            @Override
+            protected void onPostExecute(Boolean aBoolean) {
+                path=file.getPath();
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTimeInMillis(System.currentTimeMillis());
+                fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
+                Imagen imagen = new Imagen(descripcion,path,fecha);
+                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(path);
+                imagen.setRequestCreator(requestCreator);
+                listaImagenes.addItem(imagen);
+                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
+                semaphore.release();
+            }
         }.execute();
     }
 
@@ -265,6 +297,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected String doInBackground(Object... params) {
                 try {
+                    semaphore.acquire();
                     HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
                     JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
 
@@ -316,6 +349,8 @@ public class MainActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     Log.d(TAG, "failed to make API request because of other IOException " +
                             e.getMessage());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
                 return "Cloud Vision API request failed. Check logs for details.";
             }
@@ -323,6 +358,7 @@ public class MainActivity extends AppCompatActivity {
             protected void onPostExecute(String result) {
                // mImageDetails.setText(result);
                 Toast.makeText(MainActivity.this, result, Toast.LENGTH_SHORT).show();
+                descripcion=result;
                 semaphore.release();
             }
         }.execute();
@@ -377,7 +413,7 @@ public class MainActivity extends AppCompatActivity {
             //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
             // on options to set
             Translate t = new Translate.Builder(
-                    com.google.api.client.googleapis.javanet.GoogleNetHttpTransport.newTrustedTransport()
+                    AndroidHttp.newCompatibleTransport()
                     , com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), null)
                     //Need to update this to your App-Name
                     .setApplicationName("Vision-Technow")
@@ -387,7 +423,7 @@ public class MainActivity extends AppCompatActivity {
                     //Target language
                     "ES");
             //Set your API-Key from https://console.developers.google.com/
-            list.setKey("AIzaSyAN4Vt8bJX0A5NLNxl4k3wVpe4lAX8x7VA");
+            list.setKey("AIzaSyC4iz3wb9_4QEKdePfAfHvxXvWl6wT2bjE");
             TranslationsListResponse response = list.execute();
             for(TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
