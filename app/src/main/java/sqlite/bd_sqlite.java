@@ -14,7 +14,7 @@ import technow.com.vision.Imagen;
  */
 public class bd_sqlite extends SQLiteOpenHelper{
 
-    private static String TABLA_BD="create table if not exists vision (id integer primary key AUTOINCREMENT,text descripcion,text path,text fecha ) ";
+    private static String TABLA_BD="create table if not exists vision (id integer primary key AUTOINCREMENT,descripcion text,path text,fecha text ) ";
 
     /**
      * Constructor
