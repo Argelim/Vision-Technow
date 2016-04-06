@@ -2,6 +2,7 @@ package technow.com.vision;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.support.v7.widget.RecyclerView;;
 import android.util.Log;
@@ -49,26 +50,27 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
                 return true;
             }
         });
-        view.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                int pos = recyclerView.getChildLayoutPosition(v);
-                Uri imagen = Uri.fromFile(new File(MainActivity.imagens.get(pos).getPath()));
-                Intent i = new Intent(Intent.ACTION_VIEW, imagen);
-                i.setType("image/*");
-                context.startActivity(i);
-            }
-        });
         Log.d("DEBUG","Se ha infado el layout");
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(ViewHolder holder, final int position) {
         holder.textView.setText(MainActivity.imagens.get(position).getDescripcion());
         MainActivity.imagens.get(position).getRequestCreator().into(holder.imageView);
         holder.fecha.setText(MainActivity.imagens.get(position).getFecha());
-        Log.d("DEBUG",MainActivity.imagens.get(position).getDescripcion());
+        Log.d("DEBUG", MainActivity.imagens.get(position).getDescripcion());
+        holder.imageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d("ONCLICK", "listner en funcionamiento");
+                Uri imagen = Uri.fromFile(new File(MainActivity.imagens.get(position).getPath()));
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setDataAndType(imagen,"image/*");
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(i);
+            }
+        });
     }
 
     @Override
