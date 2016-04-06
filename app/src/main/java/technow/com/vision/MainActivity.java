@@ -336,6 +336,9 @@ public class MainActivity extends AppCompatActivity {
                             labelDetection.setType("LABEL_DETECTION");
                             labelDetection.setMaxResults(10);
                             add(labelDetection);
+                            labelDetection.setType("FACE_DETECTION");
+                            labelDetection.setMaxResults(10);
+                            add(labelDetection);
                         }});
 
                         // Add the list of one thing to the request
@@ -399,7 +402,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (labels != null) {
             for (EntityAnnotation label : labels) {
-                ingles.add(label.getDescription());
+                if(label.getScore() > 0.50){
+                    ingles.add(label.getDescription());
+                }
             }
             ArrayList<String> espanyol = traducir(ingles);
             for (int i = 0; i < espanyol.size(); i++) {
