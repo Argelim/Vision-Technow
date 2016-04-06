@@ -259,11 +259,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPostExecute(Boolean aBoolean) {
                 path=file.getPath();
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(System.currentTimeMillis());
-                fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
                 Imagen imagen = new Imagen(descripcion,path,fecha);
-                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path)).resize(50,50).transform(new CircleTransform());
+                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path)).resize(50, 50).transform(new CircleTransform());
                 imagen.setRequestCreator(requestCreator);
                 listaImagenes.addItem(imagen);
                 insertarImagen(imagen);
@@ -351,6 +348,8 @@ public class MainActivity extends AppCompatActivity {
                             labelDetection.setType("LABEL_DETECTION");
                             labelDetection.setMaxResults(10);
                             add(labelDetection);
+
+                            labelDetection = new Feature();
                             labelDetection.setType("FACE_DETECTION");
                             labelDetection.setMaxResults(10);
                             add(labelDetection);
@@ -417,6 +416,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (labels != null) {
             for (EntityAnnotation label : labels) {
+                Log.d("SCORE", String.valueOf(label.getScore()));
                 if(label.getScore() > 0.50){
                     ingles.add(label.getDescription());
                 }
