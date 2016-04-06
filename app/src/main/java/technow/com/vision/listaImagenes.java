@@ -1,6 +1,8 @@
 package technow.com.vision;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.support.v7.widget.RecyclerView;;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,6 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import java.io.File;
 
 
 public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder>  {
@@ -43,6 +47,16 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
                     v.setBackgroundResource(R.drawable.borde);
                 }
                 return true;
+            }
+        });
+        view.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int pos = recyclerView.getChildLayoutPosition(v);
+                Uri imagen = Uri.fromFile(new File(MainActivity.imagens.get(pos).getPath()));
+                Intent i = new Intent(Intent.ACTION_VIEW, imagen);
+                i.setType("image/*");
+                context.startActivity(i);
             }
         });
         Log.d("DEBUG","Se ha infado el layout");
