@@ -377,17 +377,18 @@ public class MainActivity extends AppCompatActivity {
             //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
             // on options to set
             Translate t = new Translate.Builder(
-                    com.google.api.client.googleapis.javanet.GoogleNetHttpTransport.newTrustedTransport()
+                    AndroidHttp.newCompatibleTransport()
                     , com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), null)
                     //Need to update this to your App-Name
                     .setApplicationName("Vision-Technow")
                     .build();
+
             Translate.Translations.List list = t.new Translations().list(
                    ingles,
                     //Target language
                     "ES");
             //Set your API-Key from https://console.developers.google.com/
-            list.setKey("AIzaSyAN4Vt8bJX0A5NLNxl4k3wVpe4lAX8x7VA");
+            list.setKey("AIzaSyC4iz3wb9_4QEKdePfAfHvxXvWl6wT2bjE");
             TranslationsListResponse response = list.execute();
             for(TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
