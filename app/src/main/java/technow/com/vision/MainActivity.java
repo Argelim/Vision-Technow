@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -120,6 +121,8 @@ public class MainActivity extends AppCompatActivity {
         if (!imagens.isEmpty()){
             cargaImagen();
         }
+        //iinvertimos la lista se visualize en orden
+        Collections.reverse(imagens);
 
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
@@ -261,11 +264,21 @@ public class MainActivity extends AppCompatActivity {
                 calendar.setTimeInMillis(System.currentTimeMillis());
                 fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
                 Imagen imagen = new Imagen(descripcion,path,fecha);
-                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(path);
+                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path));
                 imagen.setRequestCreator(requestCreator);
                 listaImagenes.addItem(imagen);
-                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
+                insertarImagen(imagen);
                 semaphore.release();
+            }
+        }.execute();
+    }
+
+    private void insertarImagen(final Imagen imagen){
+        new AsyncTask<Void,Void,Void>(){
+            @Override
+            protected Void doInBackground(Void... params) {
+                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
+                return null;
             }
         }.execute();
     }
