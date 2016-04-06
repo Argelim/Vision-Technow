@@ -52,6 +52,8 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         holder.textView.setText(MainActivity.imagens.get(position).getDescripcion());
+        MainActivity.imagens.get(position).getRequestCreator().into(holder.imageView);
+        holder.fecha.setText(MainActivity.imagens.get(position).getFecha());
         Log.d("DEBUG",MainActivity.imagens.get(position).getDescripcion());
     }
 
@@ -64,19 +66,21 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         private ImageView imageView;
-        private TextView textView;
+        private TextView textView,fecha;
+
 
         public ViewHolder(View itemView) {
             super(itemView);
-            //imageView = (ImageView) itemView.findViewById(R.id.imageView);
-            textView=(TextView) itemView.findViewById(R.id.textView2);
+            imageView = (ImageView) itemView.findViewById(R.id.imageView2);
+            textView=(TextView) itemView.findViewById(R.id.textViewDescripcion);
+            fecha = (TextView) itemView.findViewById(R.id.textViewFecha);
             Log.d("DEBUG","Se le referenciado");
         }
     }
 
     public void addItem(Imagen imagen){
-        MainActivity.imagens.add(imagen);
-        notifyItemInserted(MainActivity.imagens.size()-1);
+        MainActivity.imagens.add(0,imagen);
+        notifyItemInserted(0);
     }
 
     public void removeItem(int pos){
