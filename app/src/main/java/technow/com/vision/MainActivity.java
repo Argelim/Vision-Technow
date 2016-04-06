@@ -263,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
                 calendar.setTimeInMillis(System.currentTimeMillis());
                 fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
                 Imagen imagen = new Imagen(descripcion,path,fecha);
-                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path));
+                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path)).resize(50,50).transform(new CircleTransform());
                 imagen.setRequestCreator(requestCreator);
                 listaImagenes.addItem(imagen);
                 insertarImagen(imagen);
