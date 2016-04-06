@@ -22,6 +22,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpTransport;
@@ -47,9 +48,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -74,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
     private RecyclerView.LayoutManager layoutManager;
-    private String fecha, descripcion, path;
+    private String fecha, descripcion, path, nombreImagen;
     private Semaphore semaphore;
     private bd_sqlite bd;
 
@@ -85,24 +88,24 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        bd = new bd_sqlite(getApplicationContext(),"vision_technow",1);
+        bd = new bd_sqlite(getApplicationContext(), "vision_technow", 1);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         if (fab != null) {
             fab.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    String [] item = {"Desde la camara", "Desde la galeria"};
+                    String[] item = {"Desde la camara", "Desde la galeria"};
                     AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                     builder.setItems(item, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             Imagen im = new Imagen("prueba", "p", "");
-                            if(which == 0){
+                            if (which == 0) {
                                 startCamera();
 //                                listaImagenes.removeItem(0);
                             }
-                            if(which == 1){
+                            if (which == 1) {
                                 startGalleryChooser();
 //                                listaImagenes.addItem(im);
                             }
@@ -116,8 +119,8 @@ public class MainActivity extends AppCompatActivity {
         imagens = new ArrayList<>();
 
         //carga la lista de imagenes por si las hay
-        imagens=bd.obtenerImagenes(getApplicationContext(),imagens);
-        if (!imagens.isEmpty()){
+        imagens = bd.obtenerImagenes(getApplicationContext(), imagens);
+        if (!imagens.isEmpty()) {
             cargaImagen();
         }
 
@@ -125,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
         //instanciamos el adapter del reciclador
-        listaImagenes = new listaImagenes(recyclerView,getApplicationContext());
+        listaImagenes = new listaImagenes(recyclerView, getApplicationContext());
         //le agregamos el adapter al reciclador
         recyclerView.setAdapter(listaImagenes);
         //creamos un manejador para reciclador
@@ -145,13 +148,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startCamera() {
-        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (PermissionUtils.requestPermission(this, CAMERA_PERMISSIONS_REQUEST, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)) {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getCameraFile()));
                 startActivityForResult(intent, CAMERA_IMAGE_REQUEST);
             }
-        }else{
+        } else {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getCameraFile()));
             startActivityForResult(intent, CAMERA_IMAGE_REQUEST);
@@ -166,25 +169,31 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
+        Calendar calendar = new GregorianCalendar();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("ddMMyyySS");
+        Log.d("FECHA", simpleDateFormat.format(calendar.getTime()));
+        String aux = simpleDateFormat.format(calendar.getTime());
+        simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        fecha = simpleDateFormat.format(calendar.getTime());
+        nombreImagen = "IMG_" + aux;
+        Log.d("FECHA", fecha);
         if (requestCode == GALLERY_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
             imagenGaleria = data.getData();
             uploadImage(data.getData());
-            saveImage(imagenGaleria, "4");
-        }
-        else if(requestCode == CAMERA_IMAGE_REQUEST && resultCode == RESULT_OK) {
+            saveImage(imagenGaleria, nombreImagen);
+        } else if (requestCode == CAMERA_IMAGE_REQUEST && resultCode == RESULT_OK) {
             Uri uri = Uri.fromFile(getCameraFile());
             uploadImage(uri);
-            saveImage(uri, "2");
+            saveImage(uri, nombreImagen);
         }
     }
 
     /**
      * Método que carga las imagenes
      */
-    private void cargaImagen(){
+    private void cargaImagen() {
         Iterator<Imagen> iterator = imagens.iterator();
-        while (iterator.hasNext()){
+        while (iterator.hasNext()) {
             Imagen imagen = iterator.next();
             File file = new File(imagen.getPath());
             RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(file);
@@ -199,24 +208,25 @@ public class MainActivity extends AppCompatActivity {
         if (PermissionUtils.permissionGranted(requestCode, CAMERA_PERMISSIONS_REQUEST, grantResults)) {
             startCamera();
         }
-        if(PermissionUtils.permissionGranted(requestCode, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, grantResults)){
-            saveImage(imagenGaleria, "4");
+        if (PermissionUtils.permissionGranted(requestCode, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, grantResults)) {
+            saveImage(imagenGaleria, nombreImagen);
         }
     }
 
     private void saveImage(final Uri data, final String nombre) {
-        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (PermissionUtils.requestPermission(this, WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 prepareToSave(data, nombre);
             }
-        }else{
+        } else {
             prepareToSave(data, nombre);
         }
     }
 
-    private void prepareToSave(final Uri data, final String nombre){
+    private void prepareToSave(final Uri data, final String nombre) {
         new AsyncTask<Void, Integer, Boolean>() {
             private File file;
+
             @Override
             protected Boolean doInBackground(Void... params) {
                 try {
@@ -233,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("Creado", "OK");
                 }
                 File oculto = new File(dir.getPath(), ".media");
-                if(!oculto.exists()){
+                if (!oculto.exists()) {
                     oculto.mkdir();
                 }
                 file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
@@ -256,15 +266,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             protected void onPostExecute(Boolean aBoolean) {
-                path=file.getPath();
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(System.currentTimeMillis());
-                fecha = calendar.get(Calendar.DAY_OF_MONTH)+":"+calendar.get(Calendar.MONTH)+":"+calendar.get(Calendar.YEAR);
-                Imagen imagen = new Imagen(descripcion,path,fecha);
-                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(path);
+                path = file.getPath();
+                Imagen imagen = new Imagen(descripcion, path, fecha);
+                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path));
                 imagen.setRequestCreator(requestCreator);
                 listaImagenes.addItem(imagen);
-                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
+                bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
                 semaphore.release();
             }
         }.execute();
@@ -276,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
                 // scale the image to 800px to save on bandwidth
                 Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
                 callCloudVision(bitmap);
-               // mMainImage.setImageBitmap(bitmap);
+                // mMainImage.setImageBitmap(bitmap);
 
             } catch (IOException e) {
                 Log.d(TAG, "Image picking failed because " + e.getMessage());
@@ -356,9 +363,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             protected void onPostExecute(String result) {
-               // mImageDetails.setText(result);
+                // mImageDetails.setText(result);
                 Toast.makeText(MainActivity.this, result, Toast.LENGTH_SHORT).show();
-                descripcion=result;
+                descripcion = result;
                 semaphore.release();
             }
         }.execute();
@@ -385,7 +392,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String convertResponseToString(BatchAnnotateImagesResponse response) {
-        String message = "I found these things:\n\n";
+        String message = "";
 
         List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
         ArrayList<String> ingles = new ArrayList<>();
@@ -395,12 +402,14 @@ public class MainActivity extends AppCompatActivity {
                 ingles.add(label.getDescription());
             }
             ArrayList<String> espanyol = traducir(ingles);
-            for (String spanish : espanyol){
-                message += String.format("%s", spanish);
-                message += ", ";
+            for (int i = 0; i < espanyol.size(); i++) {
+                message += String.format("%s", espanyol.get(i));
+                if (i != espanyol.size() - 1) {
+                    message += ", ";
+                }
             }
         } else {
-            message += "nothing";
+            message += "No se ha podido describir la imagen";
         }
 
         return message;
@@ -420,13 +429,13 @@ public class MainActivity extends AppCompatActivity {
                     .build();
 
             Translate.Translations.List list = t.new Translations().list(
-                   ingles,
+                    ingles,
                     //Target language
                     "ES");
             //Set your API-Key from https://console.developers.google.com/
             list.setKey("AIzaSyC4iz3wb9_4QEKdePfAfHvxXvWl6wT2bjE");
             TranslationsListResponse response = list.execute();
-            for(TranslationsResource tr : response.getTranslations()) {
+            for (TranslationsResource tr : response.getTranslations()) {
                 espanyol.add(tr.getTranslatedText());
             }
         } catch (Exception e) {
