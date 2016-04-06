@@ -122,14 +122,6 @@ public class MainActivity extends AppCompatActivity {
 
         imagens = new ArrayList<>();
 
-        //carga la lista de imagenes por si las hay
-        imagens = bd.obtenerImagenes(getApplicationContext(), imagens);
-        if (!imagens.isEmpty()) {
-            cargaImagen();
-        }
-        //iinvertimos la lista se visualize en orden
-        Collections.reverse(imagens);
-
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(2000);
@@ -143,6 +135,11 @@ public class MainActivity extends AppCompatActivity {
         //instanciamos el semaforo para más control de los hilos
         semaphore = new Semaphore(1);
 
+        //carga la lista de imagenes por si las hay
+        bd.obtenerImagenes(getApplicationContext(), listaImagenes);
+        if (!imagens.isEmpty()) {
+            Collections.reverse(imagens);
+        }
     }
 
     public void startGalleryChooser() {
@@ -194,18 +191,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Método que carga las imagenes
-     */
-    private void cargaImagen() {
-        Iterator<Imagen> iterator = imagens.iterator();
-        while (iterator.hasNext()) {
-            Imagen imagen = iterator.next();
-            File file = new File(imagen.getPath());
-            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(file);
-            imagen.setRequestCreator(requestCreator);
-        }
-    }
+
 
 
     @Override
@@ -290,8 +276,18 @@ public class MainActivity extends AppCompatActivity {
         new AsyncTask<Void,Void,Void>(){
             @Override
             protected Void doInBackground(Void... params) {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
                 return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                semaphore.release();
             }
         }.execute();
     }

@@ -4,10 +4,17 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.AsyncTask;
 
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.RequestCreator;
+
+import java.io.File;
 import java.util.ArrayList;
 
+import technow.com.vision.CircleTransform;
 import technow.com.vision.Imagen;
+import technow.com.vision.listaImagenes;
 
 /**
  * Created by Tautvydas on 05/04/2016.
@@ -23,7 +30,7 @@ public class bd_sqlite extends SQLiteOpenHelper{
      * @param version version BD
      */
     public bd_sqlite(Context context,String name,int version) {
-        super(context,name, null, version);
+        super(context, name, null, version);
     }
 
     /**
@@ -62,17 +69,38 @@ public class bd_sqlite extends SQLiteOpenHelper{
     /**
      * Carga la lista en caso de que haya alguna imagen almacenada
      * @param context contexto
-     * @param lista lista con todas las imagenes
      * @return lista cargada con las imagenes
      */
-    public ArrayList<Imagen> obtenerImagenes(Context context, ArrayList<Imagen> lista){
-        SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery("select descripcion,path,fecha from vision",null);
-        while(cursor.moveToNext()){
-            Imagen imagen = new Imagen(cursor.getString(0),cursor.getString(1),cursor.getString(2));
-            lista.add(imagen);
-        }
-        return lista;
+    public void obtenerImagenes(final Context context, final listaImagenes listaImagenes){
+
+        new AsyncTask<Void,Imagen,SQLiteDatabase>(){
+
+            @Override
+            protected SQLiteDatabase doInBackground(Void... params) {
+                SQLiteDatabase db = getReadableDatabase();
+                Cursor cursor = db.rawQuery("select descripcion,path,fecha from vision",null);
+                while(cursor.moveToNext()){
+                    Imagen imagen = new Imagen(cursor.getString(0),cursor.getString(1),cursor.getString(2));
+                    File file = new File(imagen.getPath());
+                    RequestCreator requestCreator = Picasso.with(context).load(file).resize(50,50).transform(new CircleTransform());
+                    imagen.setRequestCreator(requestCreator);
+
+                    publishProgress(imagen);
+                }
+                return db;
+            }
+
+            @Override
+            protected void onProgressUpdate(Imagen... values) {
+                listaImagenes.addItem(values[0]);
+            }
+
+            @Override
+            protected void onPostExecute(SQLiteDatabase aVoid) {
+                aVoid.close();
+            }
+        }.execute();
+
     }
 
     /**
