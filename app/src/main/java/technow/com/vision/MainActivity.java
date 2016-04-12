@@ -1,26 +1,32 @@
 package technow.com.vision;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.support.v7.widget.helper.ItemTouchHelper;
+import android.support.v7.widget.helper.ItemTouchUIUtil;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ProgressBar;
+import android.view.View.OnClickListener;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
@@ -44,24 +50,16 @@ import com.squareup.picasso.RequestCreator;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
-
-import java.util.Collections;
 
 import java.util.GregorianCalendar;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Semaphore;
-
-import jp.wasabeef.recyclerview.animators.FlipInBottomXAnimator;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
 import sqlite.bd_sqlite;
@@ -80,10 +78,10 @@ public class MainActivity extends AppCompatActivity {
     public static ArrayList<Imagen> imagens;
     private RecyclerView recyclerView;
     private listaImagenes listaImagenes;
-    private RecyclerView.LayoutManager layoutManager;
-    private String fecha, descripcion, path, nombreImagen;
-    private Semaphore semaphore;
+    private LinearLayoutManager layoutManager;
+    private String fecha, path, nombreImagen;
     private bd_sqlite bd;
+    public static Snackbar snackbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         if (fab != null) {
-            fab.setOnClickListener(new View.OnClickListener() {
+            fab.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     String[] item = {"Desde la camara", "Desde la galeria"};
@@ -107,11 +105,9 @@ public class MainActivity extends AppCompatActivity {
                             Imagen im = new Imagen("prueba", "p", "");
                             if (which == 0) {
                                 startCamera();
-//                                listaImagenes.removeItem(0);
                             }
                             if (which == 1) {
                                 startGalleryChooser();
-//                                listaImagenes.addItem(im);
                             }
                         }
                     });
@@ -119,37 +115,47 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
-
         imagens = new ArrayList<>();
-
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
-        recyclerView.getItemAnimator().setRemoveDuration(2000);
+        recyclerView.getItemAnimator().setRemoveDuration(50);
+        recyclerView.getItemAnimator().setAddDuration(50);
+        recyclerView.setClickable(true);
         //instanciamos el adapter del reciclador
         listaImagenes = new listaImagenes(recyclerView, getApplicationContext());
         //le agregamos el adapter al reciclador
         recyclerView.setAdapter(listaImagenes);
         //creamos un manejador para reciclador
         layoutManager = new LinearLayoutManager(getApplicationContext());
+        layoutManager.setReverseLayout(true);
+        layoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(layoutManager);
-        //instanciamos el semaforo para más control de los hilos
-        semaphore = new Semaphore(1);
-
+        //añadimos un listener para el borrado con deslizamiento tanto para la derecha como para la izquierda
+        ListenerSwipe listenerSwipe = new ListenerSwipe(0,ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT,snackbar);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(listenerSwipe);
+        itemTouchHelper.attachToRecyclerView(recyclerView);
         //carga la lista de imagenes por si las hay
         bd.obtenerImagenes(getApplicationContext(), listaImagenes);
-        if (!imagens.isEmpty()) {
-            Collections.reverse(imagens);
-        }
+        recyclerView.getLayoutManager().scrollToPosition(ScrollView.FOCUS_UP);
     }
 
+
+
+
+    /**
+     * Método que invoca un intent que muestra la galeria de imagenes
+     */
     public void startGalleryChooser() {
         Intent intent = new Intent();
         intent.setType("image/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(intent, "Select a photo"),
+        startActivityForResult(Intent.createChooser(intent, "Selecciona una foto"),
                 GALLERY_IMAGE_REQUEST);
     }
 
+    /**
+     * Método que ejecuta la camara del dispositivo
+     */
     public void startCamera() {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (PermissionUtils.requestPermission(this, CAMERA_PERMISSIONS_REQUEST, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)) {
@@ -170,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         Calendar calendar = new GregorianCalendar();
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("ddMMyyySS");
@@ -178,21 +184,78 @@ public class MainActivity extends AppCompatActivity {
         String aux = simpleDateFormat.format(calendar.getTime());
         simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy");
         fecha = simpleDateFormat.format(calendar.getTime());
-        nombreImagen = "IMG_" + aux;
+        nombreImagen = "IMG_" + aux + String.valueOf((int) (Math.random() * 1000));
         Log.d("FECHA", fecha);
         if (requestCode == GALLERY_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
             imagenGaleria = data.getData();
-            uploadImage(data.getData());
-            saveImage(imagenGaleria, nombreImagen);
+            Imagen imagen1 = new Imagen();
+            new Run(imagen1, imagenGaleria, nombreImagen).execute();
+
         } else if (requestCode == CAMERA_IMAGE_REQUEST && resultCode == RESULT_OK) {
-            Uri uri = Uri.fromFile(getCameraFile());
-            uploadImage(uri);
-            saveImage(uri, nombreImagen);
+            final Uri uri = Uri.fromFile(getCameraFile());
+            Imagen imagen1 = new Imagen();
+            new Run(imagen1, uri, nombreImagen).execute();
         }
     }
 
+    /**
+     * Clase privada AsyncTask, realiza la subida de imagen con
+     * cloudServer, obtiene la descripción, lo almacenamos en el dispositivo
+     * y en la base de datos SQLite para poder recuperarlo.
+     */
+    private class Run extends AsyncTask<Void, Void, Void> {
+        private Imagen imagen;
+        private Uri uri;
+        private String nombreImagen;
+        private ProgressDialog  progressDialog;
+        private int contador =0;
 
+        public Run(Imagen imagen, Uri uri, String nombreImagen) {
+            this.imagen = imagen;
+            this.uri = uri;
+            this.nombreImagen = nombreImagen;
+        }
 
+        @Override
+        protected void onPreExecute() {
+
+            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog.setTitle("Cargando");
+            progressDialog.setIndeterminate(true);
+            progressDialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            publishProgress();
+            uploadImage(uri, imagen);
+            contador++;
+            publishProgress();
+            saveImage(uri, nombreImagen);
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            if(contador==0){
+                progressDialog.setMessage("Subiendo Imagen");
+            }else {
+                progressDialog.setMessage("Guardando Imagen");
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            imagen.setPath(path);
+            imagen.setFecha(fecha);
+            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(uri).resize(50,50).transform(new CircleTransform());
+            imagen.setRequestCreator(requestCreator);
+            bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
+            recyclerView.getLayoutManager().scrollToPosition(recyclerView.getLayoutManager().getItemCount());
+            listaImagenes.addItem(imagen);
+            progressDialog.dismiss();
+        }
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -216,87 +279,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void prepareToSave(final Uri data, final String nombre) {
-        new AsyncTask<Void, Integer, Boolean>() {
-            private File file;
-
-            @Override
-            protected Boolean doInBackground(Void... params) {
-                try {
-                    semaphore.acquire();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                boolean creado;
-                File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
-                Log.d("FILE", dir.getAbsolutePath());
-                Log.d("Creado", String.valueOf(dir.exists()));
-                if (!dir.exists()) {
-                    dir.mkdir();
-                    Log.d("Creado", "OK");
-                }
-                File oculto = new File(dir.getPath(), ".media");
-                if (!oculto.exists()) {
-                    oculto.mkdir();
-                }
-                file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
-                try {
-                    file.createNewFile();
-                    path = file.getPath();
-                    Log.d("FILE", file.getAbsolutePath());
-                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
-                    FileOutputStream fos = new FileOutputStream(file);
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fos);
-                    fos.flush();
-                    fos.close();
-                    creado = true;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    creado = false;
-                }
-                return creado;
-            }
-
-            @Override
-            protected void onPostExecute(Boolean aBoolean) {
-                path=file.getPath();
-                Imagen imagen = new Imagen(descripcion,path,fecha);
-                RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(new File(path)).resize(50, 50).transform(new CircleTransform());
-                imagen.setRequestCreator(requestCreator);
-                listaImagenes.addItem(imagen);
-                insertarImagen(imagen);
-                semaphore.release();
-            }
-        }.execute();
+        File file;
+        File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
+        if (!dir.exists()) {
+            dir.mkdir();
+            Log.d("Creado", "OK");
+        }
+        File oculto = new File(dir.getPath(), "Pictures");
+        if (!oculto.exists()) {
+            oculto.mkdir();
+        }
+        file = new File(oculto.getAbsolutePath(), nombre + ".jpeg");
+        try {
+            file.createNewFile();
+            path = file.getPath();
+            Log.d("FILE", file.getAbsolutePath());
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fos);
+            fos.flush();
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    private void insertarImagen(final Imagen imagen){
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                try {
-                    semaphore.acquire();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                bd.insertarImagen(getApplicationContext(),imagen.getDescripcion(),imagen.getPath(),imagen.getFecha());
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                semaphore.release();
-            }
-        }.execute();
-    }
-
-    public void uploadImage(Uri uri) {
+    public void uploadImage(Uri uri, Imagen imagen) {
         if (uri != null) {
             try {
                 // scale the image to 800px to save on bandwidth
                 Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
-                callCloudVision(bitmap);
-                // mMainImage.setImageBitmap(bitmap);
-
+                callCloudVision(bitmap, imagen);
             } catch (IOException e) {
                 Log.d(TAG, "Image picking failed because " + e.getMessage());
                 Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
@@ -307,86 +320,68 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void callCloudVision(final Bitmap bitmap) throws IOException {
-        // Switch text to loading
-        //mImageDetails.setText(R.string.loading_message);
+    private void callCloudVision(final Bitmap bitmap, Imagen imagen) throws IOException {
 
-        // Do the real work in an async task, because we need to use the network anyway
-        new AsyncTask<Object, Void, String>() {
-            @Override
-            protected String doInBackground(Object... params) {
-                try {
-                    semaphore.acquire();
-                    HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
-                    JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+        try {
 
-                    Vision.Builder builder = new Vision.Builder(httpTransport, jsonFactory, null);
-                    builder.setVisionRequestInitializer(new
-                            VisionRequestInitializer(CLOUD_VISION_API_KEY));
-                    Vision vision = builder.build();
+            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
+            JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
 
-                    BatchAnnotateImagesRequest batchAnnotateImagesRequest =
-                            new BatchAnnotateImagesRequest();
-                    batchAnnotateImagesRequest.setRequests(new ArrayList<AnnotateImageRequest>() {{
-                        AnnotateImageRequest annotateImageRequest = new AnnotateImageRequest();
+            Vision.Builder builder = new Vision.Builder(httpTransport, jsonFactory, null);
+            builder.setVisionRequestInitializer(new
+                    VisionRequestInitializer(CLOUD_VISION_API_KEY));
+            Vision vision = builder.build();
 
-                        // Add the image
-                        Image base64EncodedImage = new Image();
-                        // Convert the bitmap to a JPEG
-                        // Just in case it's a format that Android understands but Cloud Vision
-                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
-                        byte[] imageBytes = byteArrayOutputStream.toByteArray();
+            BatchAnnotateImagesRequest batchAnnotateImagesRequest =
+                    new BatchAnnotateImagesRequest();
+            batchAnnotateImagesRequest.setRequests(new ArrayList<AnnotateImageRequest>() {{
+                AnnotateImageRequest annotateImageRequest = new AnnotateImageRequest();
 
-                        // Base64 encode the JPEG
-                        base64EncodedImage.encodeContent(imageBytes);
-                        annotateImageRequest.setImage(base64EncodedImage);
+                // Add the image
+                Image base64EncodedImage = new Image();
+                // Convert the bitmap to a JPEG
+                // Just in case it's a format that Android understands but Cloud Vision
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, byteArrayOutputStream);
+                byte[] imageBytes = byteArrayOutputStream.toByteArray();
 
-                        // add the features we want
-                        annotateImageRequest.setFeatures(new ArrayList<Feature>() {{
-                            Feature labelDetection = new Feature();
-                            labelDetection.setType("LABEL_DETECTION");
-                            labelDetection.setMaxResults(10);
-                            add(labelDetection);
+                // Base64 encode the JPEG
+                base64EncodedImage.encodeContent(imageBytes);
+                annotateImageRequest.setImage(base64EncodedImage);
 
-                            labelDetection = new Feature();
-                            labelDetection.setType("FACE_DETECTION");
-                            labelDetection.setMaxResults(10);
-                            add(labelDetection);
-                        }});
+                // add the features we want
+                annotateImageRequest.setFeatures(new ArrayList<Feature>() {{
+                    Feature labelDetection = new Feature();
+                    labelDetection.setType("LABEL_DETECTION");
+                    labelDetection.setMaxResults(10);
+                    add(labelDetection);
 
-                        // Add the list of one thing to the request
-                        add(annotateImageRequest);
-                    }});
+                    labelDetection = new Feature();
+                    labelDetection.setType("FACE_DETECTION");
+                    labelDetection.setMaxResults(10);
+                    add(labelDetection);
+                }});
 
-                    Vision.Images.Annotate annotateRequest =
-                            vision.images().annotate(batchAnnotateImagesRequest);
-                    // Due to a bug: requests to Vision API containing large images fail when GZipped.
-                    annotateRequest.setDisableGZipContent(true);
-                    Log.d(TAG, "created Cloud Vision request object, sending request");
+                // Add the list of one thing to the request
+                add(annotateImageRequest);
+            }});
 
-                    BatchAnnotateImagesResponse response = annotateRequest.execute();
-                    return convertResponseToString(response);
-
-                } catch (GoogleJsonResponseException e) {
-                    Log.d(TAG, "failed to make API request because " + e.getContent());
-                } catch (IOException e) {
-                    Log.d(TAG, "failed to make API request because of other IOException " +
-                            e.getMessage());
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                return "Cloud Vision API request failed. Check logs for details.";
-            }
-
-            protected void onPostExecute(String result) {
-                // mImageDetails.setText(result);
-                Toast.makeText(MainActivity.this, result, Toast.LENGTH_SHORT).show();
-                descripcion = result;
-                semaphore.release();
-            }
-        }.execute();
+            Vision.Images.Annotate annotateRequest =
+                    vision.images().annotate(batchAnnotateImagesRequest);
+            // Due to a bug: requests to Vision API containing large images fail when GZipped.
+            annotateRequest.setDisableGZipContent(true);
+            Log.d(TAG, "created Cloud Vision request object, sending request");
+            BatchAnnotateImagesResponse response = annotateRequest.execute();
+            //añadimos la descripción a la imágen
+            imagen.setDescripcion(convertResponseToString(response));
+        } catch (GoogleJsonResponseException e) {
+            Log.d(TAG, "failed to make API request because " + e.getContent());
+        } catch (IOException e) {
+            Log.d(TAG, "failed to make API request because of other IOException " +
+                    e.getMessage());
+        }
     }
+
 
     public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
 
@@ -417,7 +412,7 @@ public class MainActivity extends AppCompatActivity {
         if (labels != null) {
             for (EntityAnnotation label : labels) {
                 Log.d("SCORE", String.valueOf(label.getScore()));
-                if(label.getScore() > 0.50){
+                if (label.getScore() > 0.50) {
                     ingles.add(label.getDescription());
                 }
             }
@@ -462,6 +457,85 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         return espanyol;
+    }
+
+    /**
+     * Clase que se encarga de la escucha de los swips que se realiza desde
+     * la pantalla
+     */
+    private class ListenerSwipe extends ItemTouchHelper.SimpleCallback {
+
+        private Snackbar snackbar;
+
+        public ListenerSwipe(int dragDirs, int swipeDirs, Snackbar snackbar) {
+            super(dragDirs, swipeDirs);
+            this.snackbar=snackbar;
+        }
+
+
+
+        @Override
+        public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+            return false;
+        }
+
+        @Override
+        public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+            final int pos = viewHolder.getAdapterPosition();
+            final Imagen iAux = MainActivity.imagens.get(pos);
+            MainActivity.imagens.remove(pos);
+            recyclerView.getAdapter().notifyDataSetChanged();
+            //hilo que se encarga de eliminar la imagen de la base de datos y
+            //del almacenamiento interno del dispositivo
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    //obtenemos el path de donde se almacena la imagen en nuestro disco
+                    String path = iAux.getPath();
+                    //eliminamos la imagen de nuestra base de datos
+                    bd.eliminarImagen(path);
+                    //obtenemos el file con el path
+                    File f = new File(path);
+                    //eliminamos el fichero
+                    f.delete();
+                }
+            }).start();
+            snackbar = Snackbar.make(getCurrentFocus(),"Deshacer los cambios?",Snackbar.LENGTH_LONG);
+            View v = snackbar.getView();
+            v.setBackgroundColor(Color.parseColor("#BBDEFB"));
+            snackbar.setAction("Deshacer", new OnClickListener() {
+                //en caso de que el usuario quiere deshacer los cambios y volver
+                @Override
+                public void onClick(View v) {
+                    MainActivity.imagens.add(pos,iAux);
+                    recyclerView.getAdapter().notifyItemInserted(pos);
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            bd.insertarImagen(getApplication(),iAux.getDescripcion(),iAux.getPath(),iAux.getFecha());
+                            try {
+                                Bitmap bitmap=null;
+                                try {
+                                    bitmap = iAux.getRequestCreator().get();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                FileOutputStream fileOutputStream = new FileOutputStream(new File(iAux.getPath()));
+                                bitmap.compress(Bitmap.CompressFormat.JPEG,30,fileOutputStream);
+                                fileOutputStream.flush();
+                                fileOutputStream.close();
+                                Log.d("CREADO","Fichero creado");
+                            } catch (FileNotFoundException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }).start();
+                }
+            }).show();
+
+        }
     }
 
 
