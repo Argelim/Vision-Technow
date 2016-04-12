@@ -32,4 +32,6 @@ dependencies {
     compile 'com.google.apis:google-api-services-vision:v1-rev2-1.21.0'
     compile 'jp.wasabeef:recyclerview-animators:2.2.1'
     compile 'com.squareup.picasso:picasso:2.5.2'
+    compile 'me.zhanghai.android.materialprogressbar:library:1.1.5'
+    compile 'com.android.support:recyclerview-v7:22.2.0'
 }

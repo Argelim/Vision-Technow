@@ -8,7 +8,7 @@
         android:id="@+id/imageView2"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginLeft="5dp" />
+        android:layout_centerVertical="true" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,19 +25,19 @@
             android:layout_width="wrap_content"
             android:layout_height="0dp"
             android:gravity="center_vertical"
-            android:text="New Text"
             android:paddingBottom="4dp"
             android:textSize="18sp"
-            android:layout_weight="1"/>
+            android:layout_weight="1"
+            android:textStyle="bold"
+            android:textColor="#424242" />
 
         <TextView
             android:id="@+id/textViewFecha"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:text="New Text"
             android:paddingBottom="4dp"
-            android:textSize="16sp"/>
+            android:textSize="12sp"/>
 
     </LinearLayout>
 
