@@ -31,9 +31,11 @@ import android.widget.Toast;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.Base64;
 import com.google.api.services.translate.Translate;
 import com.google.api.services.translate.model.TranslationsListResponse;
 import com.google.api.services.translate.model.TranslationsResource;
@@ -45,14 +47,23 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
+//import com.google.gson.GsonBuilder;
+//import com.google.gson.Gson;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -228,10 +239,12 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... params) {
             publishProgress();
-            uploadImage(uri, imagen);
             contador++;
             publishProgress();
             saveImage(uri, nombreImagen);
+            imagen.setPath(path);
+            imagen.setFecha(fecha);
+            subirImagen(imagen);
             return null;
         }
 
@@ -246,8 +259,6 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Void aVoid) {
-            imagen.setPath(path);
-            imagen.setFecha(fecha);
             RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(uri).resize(50,50).transform(new CircleTransform());
             imagen.setRequestCreator(requestCreator);
             bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
@@ -302,6 +313,73 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+
+    private void subirImagen(Imagen imagen){
+
+        //obtenemos la uri del path
+        Uri uri = Uri.fromFile(new File(imagen.getPath()));
+
+        try {
+
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(),uri);
+
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG,30,byteArrayOutputStream);
+
+            ImagenJson imagenJson = new ImagenJson(byteArrayOutputStream.toByteArray().toString());
+            Gson gson = new Gson();
+
+            String json = gson.toJson(imagenJson);
+
+            Log.d("RESPUESTA",json);
+
+            URL url = new URL("http://8.35.192.144:8000/api/v1/imagenes/");
+
+            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setRequestMethod("POST");
+            httpURLConnection.setRequestProperty("Content-Type","application/json");
+            httpURLConnection.setDoOutput(true);
+            httpURLConnection.setDoInput(true);
+
+            DataOutputStream dataOutputStream = new DataOutputStream(httpURLConnection.getOutputStream());
+
+            dataOutputStream.writeBytes(json);
+            dataOutputStream.flush();
+
+
+
+            int response = httpURLConnection.getResponseCode();
+
+            Log.d("RESPUESTA",json);
+
+            //si la conexión ha sido existosa
+            if(response==200){
+
+                InputStreamReader inputStreamReader = new InputStreamReader(httpURLConnection.getInputStream());
+
+                int datos;
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ((datos=inputStreamReader.read())!=-1){
+                    char c = (char) datos;
+                    stringBuilder.append(c);
+                }
+
+
+               Log.d("RESPUESTA",stringBuilder.toString());
+
+            }else{
+                Log.d("RESPUESTA",String.valueOf(response));
+            }
+
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void uploadImage(Uri uri, Imagen imagen) {
