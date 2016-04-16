@@ -3,6 +3,7 @@ package technow.com.vision;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.design.widget.Snackbar;
@@ -19,11 +20,14 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.google.api.client.util.Base64;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-
-import me.zhanghai.android.materialprogressbar.MaterialProgressBar;
-
-import static android.support.v7.widget.helper.ItemTouchHelper.*;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 
 public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder> {
@@ -71,12 +75,9 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
-
         holder.textView.setText(MainActivity.imagens.get(position).getDescripcion());
-        Log.d("PRUEBA", String.valueOf(position));
         MainActivity.imagens.get(position).getRequestCreator().into(holder.imageView);
         holder.fecha.setText(MainActivity.imagens.get(position).getFecha());
-
         holder.imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -14,14 +14,18 @@ import me.zhanghai.android.materialprogressbar.MaterialProgressBar;
  */
 public class Imagen {
 
-    private ImageView imageView;
     private String descripcion,fecha,path;
     private int id;
     private RequestCreator requestCreator;
-    private RecyclerView.ViewHolder viewHolder;
-    private Button bar;
-    private ProgressBar progressBar;
+    private String Base64Imagen;
 
+    public String getBase64Imagen() {
+        return Base64Imagen;
+    }
+
+    public void setBase64Imagen(String base64Imagen) {
+        Base64Imagen = base64Imagen;
+    }
 
     public Imagen(String descripcion, String path, String fecha) {
         this.descripcion = descripcion;
@@ -32,15 +36,6 @@ public class Imagen {
     public Imagen() {
     }
 
-
-
-    public ImageView getImageView() {
-        return imageView;
-    }
-
-    public void setImageView(ImageView imageView) {
-        this.imageView = imageView;
-    }
 
     public String getDescripcion() {
         return descripcion;
@@ -82,19 +77,4 @@ public class Imagen {
         this.requestCreator = requestCreator;
     }
 
-    public RecyclerView.ViewHolder getViewHolder() {
-        return viewHolder;
-    }
-
-    public void setViewHolder(RecyclerView.ViewHolder viewHolder) {
-        this.viewHolder = viewHolder;
-    }
-
-    public Button getButton() {
-        return bar;
-    }
-
-    public void setButton(Button bar) {
-        this.bar = bar;
-    }
 }
