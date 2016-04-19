@@ -71,6 +71,23 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 
 import java.util.List;
+
+import cz.msebera.android.httpclient.HttpEntity;
+import cz.msebera.android.httpclient.HttpVersion;
+import cz.msebera.android.httpclient.client.ClientProtocolException;
+import cz.msebera.android.httpclient.client.HttpClient;
+import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
+import cz.msebera.android.httpclient.client.methods.HttpPost;
+import cz.msebera.android.httpclient.entity.ContentType;
+import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
+import cz.msebera.android.httpclient.entity.mime.content.ContentBody;
+import cz.msebera.android.httpclient.entity.mime.content.FileBody;
+import cz.msebera.android.httpclient.entity.mime.content.StringBody;
+import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
+import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
+import cz.msebera.android.httpclient.impl.client.HttpClients;
+import cz.msebera.android.httpclient.params.CoreProtocolPNames;
+import cz.msebera.android.httpclient.util.EntityUtils;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
 import sqlite.bd_sqlite;
@@ -318,68 +335,37 @@ public class MainActivity extends AppCompatActivity {
 
     private void subirImagen(Imagen imagen){
 
-        //obtenemos la uri del path
-        Uri uri = Uri.fromFile(new File(imagen.getPath()));
+            CloseableHttpClient httpclient = HttpClients.createDefault();
+            try {
+                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api/v1/imagenes/");
+                FileBody fileBody = new FileBody(new File(imagen.getPath()));
 
-        try {
+                HttpEntity reqEntity = MultipartEntityBuilder.create()
+                        .seContentType(ContentType.MULTIPART_FORM_DATA)
+                        .addPart("imagen", fileBody)
+                        .build();
+                httppost.setEntity(reqEntity);
+                Log.d("REQUEST","executing request " + httppost.getRequestLine());
+                CloseableHttpResponse response = httpclient.execute(httppost);
 
-            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(),uri);
-
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG,30,byteArrayOutputStream);
-
-            ImagenJson imagenJson = new ImagenJson(byteArrayOutputStream.toByteArray().toString());
-            Gson gson = new Gson();
-
-            String json = gson.toJson(imagenJson);
-
-            Log.d("RESPUESTA",json);
-
-            URL url = new URL("http://8.35.192.144:8000/api/v1/imagenes/");
-
-            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.setRequestMethod("POST");
-            httpURLConnection.setRequestProperty("Content-Type","application/json");
-            httpURLConnection.setDoOutput(true);
-            httpURLConnection.setDoInput(true);
-
-            DataOutputStream dataOutputStream = new DataOutputStream(httpURLConnection.getOutputStream());
-
-            dataOutputStream.writeBytes(json);
-            dataOutputStream.flush();
-
-
-
-            int response = httpURLConnection.getResponseCode();
-
-            Log.d("RESPUESTA",json);
-
-            //si la conexión ha sido existosa
-            if(response==200){
-
-                InputStreamReader inputStreamReader = new InputStreamReader(httpURLConnection.getInputStream());
-
-                int datos;
-                StringBuilder stringBuilder = new StringBuilder();
-
-                while ((datos=inputStreamReader.read())!=-1){
-                    char c = (char) datos;
-                    stringBuilder.append(c);
+                try {
+                    HttpEntity resEntity = response.getEntity();
+                    Log.d("REQUEST","executing request " + resEntity);
+                    EntityUtils.consume(resEntity);
+                } finally {
+                    response.close();
                 }
-
-
-               Log.d("RESPUESTA",stringBuilder.toString());
-
-            }else{
-                Log.d("RESPUESTA",String.valueOf(response));
+            } catch (ClientProtocolException e1) {
+                e1.printStackTrace();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            } finally {
+                try {
+                    httpclient.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 
     public void uploadImage(Uri uri, Imagen imagen) {

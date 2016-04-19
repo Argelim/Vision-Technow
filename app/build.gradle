@@ -34,4 +34,6 @@ dependencies {
     compile 'com.squareup.picasso:picasso:2.5.2'
     compile 'me.zhanghai.android.materialprogressbar:library:1.1.5'
     compile 'com.android.support:recyclerview-v7:22.2.0'
+    compile group: 'org.apache.httpcomponents' , name: 'httpclient-android' , version: '4.3.5.1'
+    compile group: 'cz.msebera.android' , name: 'httpclient', version: '4.4.1.1'
 }
