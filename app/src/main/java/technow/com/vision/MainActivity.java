@@ -20,22 +20,17 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
-import android.support.v7.widget.helper.ItemTouchUIUtil;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Toast;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.Base64;
 import com.google.api.services.translate.Translate;
 import com.google.api.services.translate.model.TranslationsListResponse;
 import com.google.api.services.translate.model.TranslationsResource;
@@ -47,23 +42,16 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 //import com.google.gson.GsonBuilder;
 //import com.google.gson.Gson;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -73,23 +61,24 @@ import java.util.GregorianCalendar;
 import java.util.List;
 
 import cz.msebera.android.httpclient.HttpEntity;
-import cz.msebera.android.httpclient.HttpVersion;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
-import cz.msebera.android.httpclient.client.HttpClient;
+import cz.msebera.android.httpclient.client.UserTokenHandler;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
 import cz.msebera.android.httpclient.entity.ContentType;
 import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
-import cz.msebera.android.httpclient.entity.mime.content.ContentBody;
 import cz.msebera.android.httpclient.entity.mime.content.FileBody;
 import cz.msebera.android.httpclient.entity.mime.content.StringBody;
+import cz.msebera.android.httpclient.impl.client.BasicCookieStore;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
-import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
-import cz.msebera.android.httpclient.params.CoreProtocolPNames;
+import cz.msebera.android.httpclient.message.BasicHeader;
+import cz.msebera.android.httpclient.protocol.BasicHttpContext;
+import cz.msebera.android.httpclient.protocol.HttpContext;
 import cz.msebera.android.httpclient.util.EntityUtils;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
+import login.Usuario;
 import sqlite.bd_sqlite;
 
 public class MainActivity extends AppCompatActivity {
@@ -110,13 +99,14 @@ public class MainActivity extends AppCompatActivity {
     private String fecha, path, nombreImagen;
     private bd_sqlite bd;
     public static Snackbar snackbar;
+    private Usuario usuario;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+
+        usuario = (Usuario) getIntent().getSerializableExtra("user");
 
         bd = new bd_sqlite(getApplicationContext(), "vision_technow", 1);
 
@@ -335,30 +325,48 @@ public class MainActivity extends AppCompatActivity {
 
     private void subirImagen(Imagen imagen){
 
-            CloseableHttpClient httpclient = HttpClients.createDefault();
+        UserTokenHandler userTokenHandler = new UserTokenHandler() {
+            @Override
+            public Object getUserToken(HttpContext context) {
+                return context.getAttribute("csrftoken");
+            }
+        };
+
+        HttpContext httpContext = new BasicHttpContext();
+        httpContext.setAttribute("csrftoken",usuario.getHeader()[0].getElements()[0].getValue());
+
+            CloseableHttpClient httpclient = HttpClients.custom().setUserTokenHandler(userTokenHandler).build();
+
             try {
-                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api/v1/imagenes/");
+
+                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api/v1/env_imagen/");
                 FileBody fileBody = new FileBody(new File(imagen.getPath()));
 
                 HttpEntity reqEntity = MultipartEntityBuilder.create()
                         .seContentType(ContentType.MULTIPART_FORM_DATA)
                         .addPart("imagen", fileBody)
                         .build();
+
                 httppost.setEntity(reqEntity);
-                Log.d("REQUEST","executing request " + httppost.getRequestLine());
-                CloseableHttpResponse response = httpclient.execute(httppost);
+                Log.d("REQUEST","executing request " + usuario.getHeader()[0].getName());
+                CloseableHttpResponse response = httpclient.execute(httppost,httpContext);
 
                 try {
                     HttpEntity resEntity = response.getEntity();
-                    Log.d("REQUEST","executing request " + resEntity);
+
+                    Log.d("RESPUESTA",String.valueOf(response.getStatusLine().getStatusCode()));
+
                     EntityUtils.consume(resEntity);
+
                 } finally {
                     response.close();
                 }
             } catch (ClientProtocolException e1) {
-                e1.printStackTrace();
+                Toast.makeText(getApplication(),"Error de conexión",Toast.LENGTH_LONG).show();
+                //e1.printStackTrace();
             } catch (IOException e1) {
-                e1.printStackTrace();
+                Toast.makeText(getApplication(),"Error de conexión",Toast.LENGTH_LONG).show();
+                //e1.printStackTrace();
             } finally {
                 try {
                     httpclient.close();

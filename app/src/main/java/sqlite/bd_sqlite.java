@@ -10,7 +10,6 @@ import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 
 import java.io.File;
-import java.util.ArrayList;
 
 import technow.com.vision.CircleTransform;
 import technow.com.vision.Imagen;
