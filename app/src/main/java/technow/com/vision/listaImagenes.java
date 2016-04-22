@@ -1,13 +1,21 @@
 package technow.com.vision;
 
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;;
+import android.support.v7.widget.RecyclerView.SimpleOnItemTouchListener;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.DragEvent;
@@ -34,6 +42,7 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
 
     private RecyclerView recyclerView;
     private Context context;
+    private FragmentManager fragmentManager;
     private static int PULSADO = 0;
     private static int SOLTADO = 1;
     private static int SCROLL = 3;
@@ -44,14 +53,16 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     }
 
 
-    public listaImagenes(RecyclerView recyclerView, Context context) {
+    public listaImagenes(RecyclerView recyclerView, Context context,FragmentManager fragmentManager) {
         this.recyclerView = recyclerView;
         this.context = context;
+        this.fragmentManager=fragmentManager;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.lista,parent,false);
+        view.setLongClickable(true);
         view.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -65,6 +76,7 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
                 }
                 return true;
             }
+
         });
 
         Log.d("DEBUG", "Se ha infado el layout");
@@ -96,8 +108,6 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
         return MainActivity.imagens.size();
     }
 
-
-
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
         private ImageView imageView;
@@ -105,6 +115,7 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
 
         public ViewHolder(View itemView) {
             super(itemView);
+
             imageView = (ImageView) itemView.findViewById(R.id.imageView2);
             textView=(TextView) itemView.findViewById(R.id.textViewDescripcion);
             fecha = (TextView) itemView.findViewById(R.id.textViewFecha);

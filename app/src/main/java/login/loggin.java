@@ -11,32 +11,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Iterator;
-import java.util.List;
 
 import cz.msebera.android.httpclient.HttpResponse;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
-import cz.msebera.android.httpclient.client.CookieStore;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
-import cz.msebera.android.httpclient.client.protocol.ClientContext;
-import cz.msebera.android.httpclient.client.protocol.HttpClientContext;
 import cz.msebera.android.httpclient.conn.HttpHostConnectException;
-import cz.msebera.android.httpclient.cookie.ClientCookie;
-import cz.msebera.android.httpclient.cookie.Cookie;
 import cz.msebera.android.httpclient.entity.StringEntity;
-import cz.msebera.android.httpclient.impl.client.BasicCookieStore;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
-import cz.msebera.android.httpclient.Header;
-import cz.msebera.android.httpclient.protocol.BasicHttpContext;
-import cz.msebera.android.httpclient.protocol.HttpContext;
+import cz.msebera.android.httpclient.util.EntityUtils;
 import technow.com.vision.MainActivity;
 import technow.com.vision.R;
 
@@ -96,11 +84,8 @@ public class loggin extends AppCompatActivity {
             @Override
             protected Void doInBackground(Void... params) {
                 CloseableHttpClient httpclient = HttpClients.createDefault();
-                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api-auth/login/");
+                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api-token-auth/");
 
-                HttpContext httpContext = new BasicHttpContext();
-                CookieStore cookieStore = new BasicCookieStore();
-                httpContext.setAttribute(HttpClientContext.COOKIE_STORE,cookieStore);
 
                 Usuario usuario = new Usuario(nombre,"",pass);
                 String contenido = new Gson().toJson(usuario);
@@ -109,13 +94,14 @@ public class loggin extends AppCompatActivity {
                     StringEntity stringEntity = new StringEntity(contenido);
                     httppost.addHeader("content-type","application/json");
                     httppost.setEntity(stringEntity);
-                    HttpResponse httpResponse = httpclient.execute(httppost,httpContext);
+                    HttpResponse httpResponse = httpclient.execute(httppost);
                     Log.d("LOGIN",String.valueOf(httpResponse.getStatusLine().getStatusCode()));
                     if (httpResponse.getStatusLine().getStatusCode()==200){
+                        String token = EntityUtils.toString(httpResponse.getEntity(),"UTF-8");
+                        Gson gson = new Gson();
+                        Token token1 = gson.fromJson(token,Token.class);
+                        usuario.setTokenKey(token1);
 
-                        List<Cookie> cookieList = cookieStore.getCookies();
-
-                        usuario.setHeader(httpResponse.getHeaders("Set-Cookie"));
                         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                         intent.putExtra("user",usuario);
                         startActivity(intent);
@@ -131,6 +117,7 @@ public class loggin extends AppCompatActivity {
                 } catch (ClientProtocolException e) {
                     e.printStackTrace();
                 } catch (HttpHostConnectException e){
+                    e.printStackTrace();
                    // Toast.makeText(getApplicationContext(),"Error de conexión",Toast.LENGTH_LONG).show();
                 } catch (IOException e) {
                     e.printStackTrace();

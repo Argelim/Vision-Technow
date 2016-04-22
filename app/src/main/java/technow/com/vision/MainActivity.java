@@ -1,6 +1,7 @@
 package technow.com.vision;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -12,15 +13,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ScrollView;
@@ -42,16 +45,17 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
-//import com.google.gson.GsonBuilder;
-//import com.google.gson.Gson;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -62,22 +66,18 @@ import java.util.List;
 
 import cz.msebera.android.httpclient.HttpEntity;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
-import cz.msebera.android.httpclient.client.UserTokenHandler;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
+import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
 import cz.msebera.android.httpclient.entity.ContentType;
 import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
 import cz.msebera.android.httpclient.entity.mime.content.FileBody;
-import cz.msebera.android.httpclient.entity.mime.content.StringBody;
-import cz.msebera.android.httpclient.impl.client.BasicCookieStore;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
-import cz.msebera.android.httpclient.message.BasicHeader;
-import cz.msebera.android.httpclient.protocol.BasicHttpContext;
-import cz.msebera.android.httpclient.protocol.HttpContext;
 import cz.msebera.android.httpclient.util.EntityUtils;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
+import login.Respuesta;
 import login.Usuario;
 import sqlite.bd_sqlite;
 
@@ -100,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
     private bd_sqlite bd;
     public static Snackbar snackbar;
     private Usuario usuario;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,13 +135,15 @@ public class MainActivity extends AppCompatActivity {
             });
         }
         imagens = new ArrayList<>();
+
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
         recyclerView.getItemAnimator().setRemoveDuration(50);
         recyclerView.getItemAnimator().setAddDuration(50);
         recyclerView.setClickable(true);
+        recyclerView.setLongClickable(true);
         //instanciamos el adapter del reciclador
-        listaImagenes = new listaImagenes(recyclerView, getApplicationContext());
+        listaImagenes = new listaImagenes(recyclerView, getApplicationContext(),getSupportFragmentManager());
         //le agregamos el adapter al reciclador
         recyclerView.setAdapter(listaImagenes);
         //creamos un manejador para reciclador
@@ -155,9 +158,8 @@ public class MainActivity extends AppCompatActivity {
         //carga la lista de imagenes por si las hay
         bd.obtenerImagenes(getApplicationContext(), listaImagenes);
         recyclerView.getLayoutManager().scrollToPosition(ScrollView.FOCUS_UP);
+
     }
-
-
 
 
     /**
@@ -271,7 +273,13 @@ public class MainActivity extends AppCompatActivity {
             bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
             recyclerView.getLayoutManager().scrollToPosition(recyclerView.getLayoutManager().getItemCount());
             listaImagenes.addItem(imagen);
+
             progressDialog.dismiss();
+
+            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+            linearLayoutManager.findViewByPosition(linearLayoutManager.getItemCount()).requestFocus();
+
+
         }
     }
 
@@ -314,7 +322,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d("FILE", file.getAbsolutePath());
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
             FileOutputStream fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG,90, fos);
             fos.flush();
             fos.close();
         } catch (IOException e) {
@@ -325,31 +333,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void subirImagen(Imagen imagen){
 
-        UserTokenHandler userTokenHandler = new UserTokenHandler() {
-            @Override
-            public Object getUserToken(HttpContext context) {
-                return context.getAttribute("csrftoken");
-            }
-        };
 
-        HttpContext httpContext = new BasicHttpContext();
-        httpContext.setAttribute("csrftoken",usuario.getHeader()[0].getElements()[0].getValue());
-
-            CloseableHttpClient httpclient = HttpClients.custom().setUserTokenHandler(userTokenHandler).build();
+        CloseableHttpClient httpclient = HttpClients.createDefault();
 
             try {
 
                 HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api/v1/env_imagen/");
-                FileBody fileBody = new FileBody(new File(imagen.getPath()));
 
+                FileBody fileBody = new FileBody(new File(imagen.getPath()));
                 HttpEntity reqEntity = MultipartEntityBuilder.create()
                         .seContentType(ContentType.MULTIPART_FORM_DATA)
                         .addPart("imagen", fileBody)
                         .build();
 
+                httppost.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
                 httppost.setEntity(reqEntity);
-                Log.d("REQUEST","executing request " + usuario.getHeader()[0].getName());
-                CloseableHttpResponse response = httpclient.execute(httppost,httpContext);
+
+                CloseableHttpResponse response = httpclient.execute(httppost);
 
                 try {
                     HttpEntity resEntity = response.getEntity();
@@ -358,6 +358,19 @@ public class MainActivity extends AppCompatActivity {
 
                     EntityUtils.consume(resEntity);
 
+                    HttpGet httpGet = new HttpGet("http://8.35.192.144:8000/api/v1/imagenes");
+                    httpGet.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
+                    response = httpclient.execute(httpGet);
+
+                    Gson gson = new Gson();
+
+                    Type type=new TypeToken<List<Respuesta>>(){}.getType();
+
+                    List<Respuesta> respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
+
+                    imagen.setDescripcion(respuestas.get(0).getDescripcion());
+
+                    Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
                 } finally {
                     response.close();
                 }
@@ -609,6 +622,31 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+
+
+    public class DialogPersonalizado extends DialogFragment {
+        @NonNull
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+            builder.setMessage("Desea eliminar la imagen seleccionada?")
+                    .setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    })
+                    .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    });
+            return builder.create();
+        }
+    }
+
+
 
 
 }
