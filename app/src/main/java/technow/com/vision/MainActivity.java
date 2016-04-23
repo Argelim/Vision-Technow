@@ -1,7 +1,6 @@
 package technow.com.vision;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -13,17 +12,15 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
-import android.view.MotionEvent;
+import android.view.GestureDetector;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ScrollView;
@@ -75,11 +72,14 @@ import cz.msebera.android.httpclient.entity.mime.content.FileBody;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
 import cz.msebera.android.httpclient.util.EntityUtils;
+import eventos.AddElementRecyclerViewListener;
+import eventos.GestureDetectorEvent;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
 import login.Respuesta;
 import login.Usuario;
 import sqlite.bd_sqlite;
+import vista.DialogoPersonalizadoLogin;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -100,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
     private bd_sqlite bd;
     public static Snackbar snackbar;
     private Usuario usuario;
-
+    private GestureDetectorEvent gestureDetectorEvent;
+    private GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,7 +159,17 @@ public class MainActivity extends AppCompatActivity {
         //carga la lista de imagenes por si las hay
         bd.obtenerImagenes(getApplicationContext(), listaImagenes);
         recyclerView.getLayoutManager().scrollToPosition(ScrollView.FOCUS_UP);
+        //Creamos un objeto que será el listener de encarado de gestionar eventos relacionado con la pantala
+        gestureDetectorEvent = new GestureDetectorEvent(getSupportFragmentManager(),this,recyclerView);
+        //instanciamos un gesture detector y le añadimos el contexto y nuestro gesture personalizado
+        gestureDetector = new GestureDetector(this,gestureDetectorEvent );
+        //Activamos los eventos que ocurra
+        gestureDetector.setOnDoubleTapListener(gestureDetectorEvent);
+        //añadimos un evento que será lanzado cuando se añada un nuevo elemento a la lista
+        recyclerView.addOnChildAttachStateChangeListener(new AddElementRecyclerViewListener(getSupportFragmentManager(),gestureDetector,recyclerView));
 
+        DialogoPersonalizadoLogin dialogoPersonalizadoLogin = new DialogoPersonalizadoLogin(this,bd);
+        dialogoPersonalizadoLogin.show(getSupportFragmentManager(),"login");
     }
 
 
@@ -253,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
             saveImage(uri, nombreImagen);
             imagen.setPath(path);
             imagen.setFecha(fecha);
-            subirImagen(imagen);
+            //subirImagen(imagen);
             return null;
         }
 
@@ -276,8 +287,8 @@ public class MainActivity extends AppCompatActivity {
 
             progressDialog.dismiss();
 
-            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-            linearLayoutManager.findViewByPosition(linearLayoutManager.getItemCount()).requestFocus();
+//            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+//            linearLayoutManager.findViewByPosition(linearLayoutManager.getItemCount()).requestFocus();
 
 
         }
@@ -622,31 +633,5 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-
-
-    public class DialogPersonalizado extends DialogFragment {
-        @NonNull
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-            builder.setMessage("Desea eliminar la imagen seleccionada?")
-                    .setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-
-                        }
-                    })
-                    .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-
-                        }
-                    });
-            return builder.create();
-        }
-    }
-
-
-
 
 }

@@ -43,10 +43,6 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     private RecyclerView recyclerView;
     private Context context;
     private FragmentManager fragmentManager;
-    private static int PULSADO = 0;
-    private static int SOLTADO = 1;
-    private static int SCROLL = 3;
-    private static int posicion;
 
 
     public listaImagenes() {
@@ -62,26 +58,6 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.lista,parent,false);
-        view.setLongClickable(true);
-        view.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                Log.d("PASAR", String.valueOf(event.getAction()));
-                if (event.getAction() == PULSADO) {
-                    v.setBackgroundResource(R.drawable.borde_encima);
-                } else if (event.getAction() == SOLTADO) {
-                    v.setBackgroundResource(R.drawable.borde);
-                } else if (event.getAction() == SCROLL) {
-                    v.setBackgroundResource(R.drawable.borde);
-                }
-                return true;
-            }
-
-        });
-
-        Log.d("DEBUG", "Se ha infado el layout");
-        view.setFocusable(true);
-        view.setFocusableInTouchMode(true);
         return new ViewHolder(view);
     }
 
@@ -108,14 +84,14 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
         return MainActivity.imagens.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
 
         private ImageView imageView;
         private TextView textView,fecha;
 
         public ViewHolder(View itemView) {
             super(itemView);
-
             imageView = (ImageView) itemView.findViewById(R.id.imageView2);
             textView=(TextView) itemView.findViewById(R.id.textViewDescripcion);
             fecha = (TextView) itemView.findViewById(R.id.textViewFecha);
@@ -123,10 +99,11 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
 
     }
 
+
+
     public void addItem(Imagen imagen){
         MainActivity.imagens.add(imagen);
         notifyItemInserted(MainActivity.imagens.size()-1);
-
     }
 
     public void removeItem(int pos){

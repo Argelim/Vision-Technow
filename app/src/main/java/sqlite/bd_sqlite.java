@@ -10,17 +10,21 @@ import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import technow.com.vision.CircleTransform;
 import technow.com.vision.Imagen;
 import technow.com.vision.listaImagenes;
+import vista.UserBD;
 
 /**
  * Created by Tautvydas on 05/04/2016.
  */
 public class bd_sqlite extends SQLiteOpenHelper{
 
-    private static String TABLA_BD="create table if not exists vision (id integer primary key AUTOINCREMENT,descripcion text,path text,fecha text ) ";
+    private static String TABLA_VISION_BD="create table if not exists vision " +
+            "(id integer primary key AUTOINCREMENT,descripcion text,path text,fecha text ) ";
+    private static String TABLA_USUARIOS_BD ="create table if not exists usuario (id integer primary key AUTOINCREMENT,usuario text,passwd text )";
 
     /**
      * Constructor
@@ -38,7 +42,8 @@ public class bd_sqlite extends SQLiteOpenHelper{
      */
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL(TABLA_BD);
+        db.execSQL(TABLA_VISION_BD);
+        db.execSQL(TABLA_USUARIOS_BD);
     }
 
     /**
@@ -109,5 +114,33 @@ public class bd_sqlite extends SQLiteOpenHelper{
     public void eliminarImagen(String path){
         SQLiteDatabase db = getWritableDatabase();
         db.execSQL("delete from vision where path='"+path+"'");
+        db.close();
+    }
+
+
+    public void insertarUsuario(UserBD user){
+        SQLiteDatabase db = getWritableDatabase();
+        db.execSQL("insert into usuario (usuario,passwd) values ('"+user.getUser()+"','"+user.getPass()+"')");
+        db.close();
+    }
+
+    public void EliminaUsuario(UserBD user){
+        SQLiteDatabase db = getWritableDatabase();
+        db.execSQL("delete from usuario where usuario = '"+user.getUser()+"'");
+        db.close();
+    }
+
+    public UserBD datosUsuario (UserBD s){
+
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("select id,usuario,passwd from usuario order by id DESC limit 1",null);
+
+        while (cursor.moveToNext()){
+            s.setUser(cursor.getString(1));
+            s.setPass(cursor.getString(2));
+        }
+        db.close();
+
+        return s;
     }
 }
