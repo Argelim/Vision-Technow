@@ -358,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                 httppost.setEntity(reqEntity);
                 HttpResponse response = httpclient.execute(httppost);
 
-                    switch (200){
+                    switch (response.getStatusLine().getStatusCode()){
                         case estados.HTTP_OK:
                             HttpGet httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
                             httpGet.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
