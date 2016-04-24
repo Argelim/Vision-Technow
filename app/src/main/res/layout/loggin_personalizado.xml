@@ -20,6 +20,12 @@
                 android:contentDescription="@string/technow" />
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/textViewError"
+                android:textColor="@color/design_textinput_error_color_light" />
+
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/Usuario"

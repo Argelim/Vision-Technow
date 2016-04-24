@@ -19,6 +19,7 @@ import java.io.UnsupportedEncodingException;
 
 import cz.msebera.android.httpclient.HttpResponse;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
+import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
 import cz.msebera.android.httpclient.conn.HttpHostConnectException;
 import cz.msebera.android.httpclient.entity.StringEntity;
@@ -83,10 +84,13 @@ public class loggin extends AppCompatActivity {
         new AsyncTask<Void,Void,Void>(){
             @Override
             protected Void doInBackground(Void... params) {
-                CloseableHttpClient httpclient = HttpClients.createDefault();
-                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api-token-auth/");
+                RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(5000)
+                                                                    .setConnectTimeout(5000)
+                                                                    .setConnectionRequestTimeout(5000)
+                                                                    .build();
 
-
+                CloseableHttpClient httpclient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+                HttpPost httppost = new HttpPost("http://104.197.94.177/api-token-auth/");
                 Usuario usuario = new Usuario(nombre,"",pass);
                 String contenido = new Gson().toJson(usuario);
 

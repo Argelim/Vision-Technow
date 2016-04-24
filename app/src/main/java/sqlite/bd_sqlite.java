@@ -120,6 +120,9 @@ public class bd_sqlite extends SQLiteOpenHelper{
 
     public void insertarUsuario(UserBD user){
         SQLiteDatabase db = getWritableDatabase();
+        //eliminamos el usuario actual para almacenar el nuevo
+        db.execSQL("delete from usuario");
+        //insertamos el nuevo usuario
         db.execSQL("insert into usuario (usuario,passwd) values ('"+user.getUser()+"','"+user.getPass()+"')");
         db.close();
     }
@@ -133,7 +136,7 @@ public class bd_sqlite extends SQLiteOpenHelper{
     public UserBD datosUsuario (UserBD s){
 
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery("select id,usuario,passwd from usuario order by id DESC limit 1",null);
+        Cursor cursor = db.rawQuery("select id,usuario,passwd from usuario",null);
 
         while (cursor.moveToNext()){
             s.setUser(cursor.getString(1));

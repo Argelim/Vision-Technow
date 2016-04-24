@@ -12,42 +12,30 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.GestureDetector;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Toast;
 
-import com.google.api.client.extensions.android.http.AndroidHttp;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.services.translate.Translate;
-import com.google.api.services.translate.model.TranslationsListResponse;
-import com.google.api.services.translate.model.TranslationsResource;
-import com.google.api.services.vision.v1.Vision;
-import com.google.api.services.vision.v1.VisionRequestInitializer;
-import com.google.api.services.vision.v1.model.AnnotateImageRequest;
-import com.google.api.services.vision.v1.model.BatchAnnotateImagesRequest;
-import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
-import com.google.api.services.vision.v1.model.EntityAnnotation;
-import com.google.api.services.vision.v1.model.Feature;
-import com.google.api.services.vision.v1.model.Image;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -62,7 +50,9 @@ import java.util.GregorianCalendar;
 import java.util.List;
 
 import cz.msebera.android.httpclient.HttpEntity;
+import cz.msebera.android.httpclient.HttpResponse;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
+import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
 import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
@@ -76,12 +66,13 @@ import eventos.AddElementRecyclerViewListener;
 import eventos.GestureDetectorEvent;
 import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
+import login.Registro;
 import login.Respuesta;
 import login.Usuario;
 import sqlite.bd_sqlite;
 import vista.DialogoPersonalizadoLogin;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements DialogoPersonalizadoLogin.OnHeadlineSelectedListener {
 
     private static final String CLOUD_VISION_API_KEY = "AIzaSyC2zS9AvR5at9m_mUjOxQMi41w5jD-5qko";
     public static final String FILE_NAME = "temp.jpg";
@@ -102,13 +93,16 @@ public class MainActivity extends AppCompatActivity {
     private Usuario usuario;
     private GestureDetectorEvent gestureDetectorEvent;
     private GestureDetector gestureDetector;
+    private DialogoPersonalizadoLogin dialogoPersonalizadoLogin;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        usuario = (Usuario) getIntent().getSerializableExtra("user");
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
         bd = new bd_sqlite(getApplicationContext(), "vision_technow", 1);
 
@@ -124,10 +118,18 @@ public class MainActivity extends AppCompatActivity {
                         public void onClick(DialogInterface dialog, int which) {
                             Imagen im = new Imagen("prueba", "p", "");
                             if (which == 0) {
-                                startCamera();
+                                if (usuario!=null){
+                                    startCamera();
+                                }else {
+                                    mostrarDialogoDeLogin();
+                                }
                             }
                             if (which == 1) {
-                                startGalleryChooser();
+                                if(usuario!=null){
+                                    startGalleryChooser();
+                                }else {
+                                    mostrarDialogoDeLogin();
+                                }
                             }
                         }
                     });
@@ -139,8 +141,9 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setItemAnimator(new SlideInLeftAnimator());
-        recyclerView.getItemAnimator().setRemoveDuration(50);
-        recyclerView.getItemAnimator().setAddDuration(50);
+        recyclerView.getItemAnimator().setRemoveDuration(500);
+        recyclerView.getItemAnimator().setAddDuration(500);
+        recyclerView.getItemAnimator().setChangeDuration(500);
         recyclerView.setClickable(true);
         recyclerView.setLongClickable(true);
         //instanciamos el adapter del reciclador
@@ -167,9 +170,6 @@ public class MainActivity extends AppCompatActivity {
         gestureDetector.setOnDoubleTapListener(gestureDetectorEvent);
         //añadimos un evento que será lanzado cuando se añada un nuevo elemento a la lista
         recyclerView.addOnChildAttachStateChangeListener(new AddElementRecyclerViewListener(getSupportFragmentManager(),gestureDetector,recyclerView));
-
-        DialogoPersonalizadoLogin dialogoPersonalizadoLogin = new DialogoPersonalizadoLogin(this,bd);
-        dialogoPersonalizadoLogin.show(getSupportFragmentManager(),"login");
     }
 
 
@@ -229,6 +229,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onArticleSelected(Usuario usuario) {
+        this.usuario = usuario;
+        Log.d("USUARIO",this.usuario.getUsername()+", "+this.usuario.getPassword()+", "+this.usuario.getTokenKey().getToken());
+    }
+
     /**
      * Clase privada AsyncTask, realiza la subida de imagen con
      * cloudServer, obtiene la descripción, lo almacenamos en el dispositivo
@@ -238,7 +244,6 @@ public class MainActivity extends AppCompatActivity {
         private Imagen imagen;
         private Uri uri;
         private String nombreImagen;
-        private ProgressDialog  progressDialog;
         private int contador =0;
 
         public Run(Imagen imagen, Uri uri, String nombreImagen) {
@@ -249,48 +254,41 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPreExecute() {
-
             progressDialog = new ProgressDialog(MainActivity.this);
             progressDialog.setTitle("Cargando");
             progressDialog.setIndeterminate(true);
-            progressDialog.show();
         }
 
         @Override
         protected Void doInBackground(Void... params) {
             publishProgress();
-            contador++;
-            publishProgress();
             saveImage(uri, nombreImagen);
             imagen.setPath(path);
             imagen.setFecha(fecha);
-            //subirImagen(imagen);
+            contador++;
+            publishProgress();
+            subirImagen(imagen);
             return null;
         }
 
         @Override
         protected void onProgressUpdate(Void... values) {
             if(contador==0){
-                progressDialog.setMessage("Subiendo Imagen");
-            }else {
+                progressDialog.show();
                 progressDialog.setMessage("Guardando Imagen");
+            }else {
+                progressDialog.setMessage("Subiendo Imagen");
             }
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
-            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(uri).resize(50,50).transform(new CircleTransform());
+            RequestCreator requestCreator = Picasso.with(getApplicationContext()).load(uri).resize(100,100).transform(new CircleTransform());
             imagen.setRequestCreator(requestCreator);
             bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
             recyclerView.getLayoutManager().scrollToPosition(recyclerView.getLayoutManager().getItemCount());
             listaImagenes.addItem(imagen);
-
             progressDialog.dismiss();
-
-//            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-//            linearLayoutManager.findViewByPosition(linearLayoutManager.getItemCount()).requestFocus();
-
-
         }
     }
 
@@ -333,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d("FILE", file.getAbsolutePath());
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(MainActivity.this.getContentResolver(), data);
             FileOutputStream fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG,90, fos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG,60, fos);
             fos.flush();
             fos.close();
         } catch (IOException e) {
@@ -343,54 +341,46 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void subirImagen(Imagen imagen){
-
-
-        CloseableHttpClient httpclient = HttpClients.createDefault();
-
+        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(5000)
+                .setConnectTimeout(5000)
+                .setConnectionRequestTimeout(5000)
+                .build();
+        CloseableHttpClient httpclient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
             try {
-
-                HttpPost httppost = new HttpPost("http://8.35.192.144:8000/api/v1/env_imagen/");
-
+                HttpPost httppost = new HttpPost(estados.HTTP_POST_UP_IMAGE);
                 FileBody fileBody = new FileBody(new File(imagen.getPath()));
                 HttpEntity reqEntity = MultipartEntityBuilder.create()
                         .seContentType(ContentType.MULTIPART_FORM_DATA)
                         .addPart("imagen", fileBody)
                         .build();
-
-                httppost.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
+                httppost.setHeader("Authorization: ", "JWT " + usuario.getTokenKey().getToken());
+                Log.d("TOKEN",usuario.getTokenKey().getToken());
                 httppost.setEntity(reqEntity);
+                HttpResponse response = httpclient.execute(httppost);
 
-                CloseableHttpResponse response = httpclient.execute(httppost);
+                    switch (200){
+                        case estados.HTTP_OK:
+                            HttpGet httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
+                            httpGet.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
+                            response = httpclient.execute(httpGet);
+                            Gson gson = new Gson();
+                            Type type=new TypeToken<List<Respuesta>>(){}.getType();
+                            List<Respuesta> respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
+                            imagen.setDescripcion(respuestas.get(0).getDescripcion());
+                            Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
+                            break;
+                        case estados.HTTP_FORBIDDEN:
+                            Log.d("ACCESO","NECESITAS LOGEARTE");
+                            break;
+                        default:
+                            Log.d("ACCESO",String.valueOf(response.getStatusLine().getStatusCode()));
+                            break;
+                    }
 
-                try {
-                    HttpEntity resEntity = response.getEntity();
-
-                    Log.d("RESPUESTA",String.valueOf(response.getStatusLine().getStatusCode()));
-
-                    EntityUtils.consume(resEntity);
-
-                    HttpGet httpGet = new HttpGet("http://8.35.192.144:8000/api/v1/imagenes");
-                    httpGet.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
-                    response = httpclient.execute(httpGet);
-
-                    Gson gson = new Gson();
-
-                    Type type=new TypeToken<List<Respuesta>>(){}.getType();
-
-                    List<Respuesta> respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
-
-                    imagen.setDescripcion(respuestas.get(0).getDescripcion());
-
-                    Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
-                } finally {
-                    response.close();
-                }
             } catch (ClientProtocolException e1) {
-                Toast.makeText(getApplication(),"Error de conexión",Toast.LENGTH_LONG).show();
-                //e1.printStackTrace();
+                e1.printStackTrace();
             } catch (IOException e1) {
-                Toast.makeText(getApplication(),"Error de conexión",Toast.LENGTH_LONG).show();
-                //e1.printStackTrace();
+                e1.printStackTrace();
             } finally {
                 try {
                     httpclient.close();
@@ -400,160 +390,160 @@ public class MainActivity extends AppCompatActivity {
             }
     }
 
-    public void uploadImage(Uri uri, Imagen imagen) {
-        if (uri != null) {
-            try {
-                // scale the image to 800px to save on bandwidth
-                Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
-                callCloudVision(bitmap, imagen);
-            } catch (IOException e) {
-                Log.d(TAG, "Image picking failed because " + e.getMessage());
-                Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
-            }
-        } else {
-            Log.d(TAG, "Image picker gave us a null image.");
-            Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void callCloudVision(final Bitmap bitmap, Imagen imagen) throws IOException {
-
-        try {
-
-            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
-
-            Vision.Builder builder = new Vision.Builder(httpTransport, jsonFactory, null);
-            builder.setVisionRequestInitializer(new
-                    VisionRequestInitializer(CLOUD_VISION_API_KEY));
-            Vision vision = builder.build();
-
-            BatchAnnotateImagesRequest batchAnnotateImagesRequest =
-                    new BatchAnnotateImagesRequest();
-            batchAnnotateImagesRequest.setRequests(new ArrayList<AnnotateImageRequest>() {{
-                AnnotateImageRequest annotateImageRequest = new AnnotateImageRequest();
-
-                // Add the image
-                Image base64EncodedImage = new Image();
-                // Convert the bitmap to a JPEG
-                // Just in case it's a format that Android understands but Cloud Vision
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, byteArrayOutputStream);
-                byte[] imageBytes = byteArrayOutputStream.toByteArray();
-
-                // Base64 encode the JPEG
-                base64EncodedImage.encodeContent(imageBytes);
-                annotateImageRequest.setImage(base64EncodedImage);
-
-                // add the features we want
-                annotateImageRequest.setFeatures(new ArrayList<Feature>() {{
-                    Feature labelDetection = new Feature();
-                    labelDetection.setType("LABEL_DETECTION");
-                    labelDetection.setMaxResults(10);
-                    add(labelDetection);
-
-                    labelDetection = new Feature();
-                    labelDetection.setType("FACE_DETECTION");
-                    labelDetection.setMaxResults(10);
-                    add(labelDetection);
-                }});
-
-                // Add the list of one thing to the request
-                add(annotateImageRequest);
-            }});
-
-            Vision.Images.Annotate annotateRequest =
-                    vision.images().annotate(batchAnnotateImagesRequest);
-            // Due to a bug: requests to Vision API containing large images fail when GZipped.
-            annotateRequest.setDisableGZipContent(true);
-            Log.d(TAG, "created Cloud Vision request object, sending request");
-            BatchAnnotateImagesResponse response = annotateRequest.execute();
-            //añadimos la descripción a la imágen
-            imagen.setDescripcion(convertResponseToString(response));
-        } catch (GoogleJsonResponseException e) {
-            Log.d(TAG, "failed to make API request because " + e.getContent());
-        } catch (IOException e) {
-            Log.d(TAG, "failed to make API request because of other IOException " +
-                    e.getMessage());
-        }
-    }
-
-
-    public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
-
-        int originalWidth = bitmap.getWidth();
-        int originalHeight = bitmap.getHeight();
-        int resizedWidth = maxDimension;
-        int resizedHeight = maxDimension;
-
-        if (originalHeight > originalWidth) {
-            resizedHeight = maxDimension;
-            resizedWidth = (int) (resizedHeight * (float) originalWidth / (float) originalHeight);
-        } else if (originalWidth > originalHeight) {
-            resizedWidth = maxDimension;
-            resizedHeight = (int) (resizedWidth * (float) originalHeight / (float) originalWidth);
-        } else if (originalHeight == originalWidth) {
-            resizedHeight = maxDimension;
-            resizedWidth = maxDimension;
-        }
-        return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false);
-    }
-
-    private String convertResponseToString(BatchAnnotateImagesResponse response) {
-        String message = "";
-
-        List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
-        ArrayList<String> ingles = new ArrayList<>();
-
-        if (labels != null) {
-            for (EntityAnnotation label : labels) {
-                Log.d("SCORE", String.valueOf(label.getScore()));
-                if (label.getScore() > 0.50) {
-                    ingles.add(label.getDescription());
-                }
-            }
-            ArrayList<String> espanyol = traducir(ingles);
-            for (int i = 0; i < espanyol.size(); i++) {
-                message += String.format("%s", espanyol.get(i));
-                if (i != espanyol.size() - 1) {
-                    message += ", ";
-                }
-            }
-        } else {
-            message += "No se ha podido describir la imagen";
-        }
-
-        return message;
-    }
-
-    private ArrayList<String> traducir(ArrayList<String> ingles) {
-        ArrayList<String> espanyol = new ArrayList<>();
-        try {
-            // See comments on
-            //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
-            // on options to set
-            Translate t = new Translate.Builder(
-                    AndroidHttp.newCompatibleTransport()
-                    , com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), null)
-                    //Need to update this to your App-Name
-                    .setApplicationName("Vision-Technow")
-                    .build();
-
-            Translate.Translations.List list = t.new Translations().list(
-                    ingles,
-                    //Target language
-                    "ES");
-            //Set your API-Key from https://console.developers.google.com/
-            list.setKey("AIzaSyC4iz3wb9_4QEKdePfAfHvxXvWl6wT2bjE");
-            TranslationsListResponse response = list.execute();
-            for (TranslationsResource tr : response.getTranslations()) {
-                espanyol.add(tr.getTranslatedText());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return espanyol;
-    }
+//    public void uploadImage(Uri uri, Imagen imagen) {
+//        if (uri != null) {
+//            try {
+//                // scale the image to 800px to save on bandwidth
+//                Bitmap bitmap = scaleBitmapDown(MediaStore.Images.Media.getBitmap(getContentResolver(), uri), 1200);
+//                callCloudVision(bitmap, imagen);
+//            } catch (IOException e) {
+//                Log.d(TAG, "Image picking failed because " + e.getMessage());
+//                Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
+//            }
+//        } else {
+//            Log.d(TAG, "Image picker gave us a null image.");
+//            Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
+//        }
+//    }
+//
+//    private void callCloudVision(final Bitmap bitmap, Imagen imagen) throws IOException {
+//
+//        try {
+//
+//            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
+//            JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+//
+//            Vision.Builder builder = new Vision.Builder(httpTransport, jsonFactory, null);
+//            builder.setVisionRequestInitializer(new
+//                    VisionRequestInitializer(CLOUD_VISION_API_KEY));
+//            Vision vision = builder.build();
+//
+//            BatchAnnotateImagesRequest batchAnnotateImagesRequest =
+//                    new BatchAnnotateImagesRequest();
+//            batchAnnotateImagesRequest.setRequests(new ArrayList<AnnotateImageRequest>() {{
+//                AnnotateImageRequest annotateImageRequest = new AnnotateImageRequest();
+//
+//                // Add the image
+//                Image base64EncodedImage = new Image();
+//                // Convert the bitmap to a JPEG
+//                // Just in case it's a format that Android understands but Cloud Vision
+//                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, byteArrayOutputStream);
+//                byte[] imageBytes = byteArrayOutputStream.toByteArray();
+//
+//                // Base64 encode the JPEG
+//                base64EncodedImage.encodeContent(imageBytes);
+//                annotateImageRequest.setImage(base64EncodedImage);
+//
+//                // add the features we want
+//                annotateImageRequest.setFeatures(new ArrayList<Feature>() {{
+//                    Feature labelDetection = new Feature();
+//                    labelDetection.setType("LABEL_DETECTION");
+//                    labelDetection.setMaxResults(10);
+//                    add(labelDetection);
+//
+//                    labelDetection = new Feature();
+//                    labelDetection.setType("FACE_DETECTION");
+//                    labelDetection.setMaxResults(10);
+//                    add(labelDetection);
+//                }});
+//
+//                // Add the list of one thing to the request
+//                add(annotateImageRequest);
+//            }});
+//
+//            Vision.Images.Annotate annotateRequest =
+//                    vision.images().annotate(batchAnnotateImagesRequest);
+//            // Due to a bug: requests to Vision API containing large images fail when GZipped.
+//            annotateRequest.setDisableGZipContent(true);
+//            Log.d(TAG, "created Cloud Vision request object, sending request");
+//            BatchAnnotateImagesResponse response = annotateRequest.execute();
+//            //añadimos la descripción a la imágen
+//            imagen.setDescripcion(convertResponseToString(response));
+//        } catch (GoogleJsonResponseException e) {
+//            Log.d(TAG, "failed to make API request because " + e.getContent());
+//        } catch (IOException e) {
+//            Log.d(TAG, "failed to make API request because of other IOException " +
+//                    e.getMessage());
+//        }
+//    }
+//
+//
+//    public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
+//
+//        int originalWidth = bitmap.getWidth();
+//        int originalHeight = bitmap.getHeight();
+//        int resizedWidth = maxDimension;
+//        int resizedHeight = maxDimension;
+//
+//        if (originalHeight > originalWidth) {
+//            resizedHeight = maxDimension;
+//            resizedWidth = (int) (resizedHeight * (float) originalWidth / (float) originalHeight);
+//        } else if (originalWidth > originalHeight) {
+//            resizedWidth = maxDimension;
+//            resizedHeight = (int) (resizedWidth * (float) originalHeight / (float) originalWidth);
+//        } else if (originalHeight == originalWidth) {
+//            resizedHeight = maxDimension;
+//            resizedWidth = maxDimension;
+//        }
+//        return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false);
+//    }
+//
+//    private String convertResponseToString(BatchAnnotateImagesResponse response) {
+//        String message = "";
+//
+//        List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
+//        ArrayList<String> ingles = new ArrayList<>();
+//
+//        if (labels != null) {
+//            for (EntityAnnotation label : labels) {
+//                Log.d("SCORE", String.valueOf(label.getScore()));
+//                if (label.getScore() > 0.50) {
+//                    ingles.add(label.getDescription());
+//                }
+//            }
+//            ArrayList<String> espanyol = traducir(ingles);
+//            for (int i = 0; i < espanyol.size(); i++) {
+//                message += String.format("%s", espanyol.get(i));
+//                if (i != espanyol.size() - 1) {
+//                    message += ", ";
+//                }
+//            }
+//        } else {
+//            message += "No se ha podido describir la imagen";
+//        }
+//
+//        return message;
+//    }
+//
+//    private ArrayList<String> traducir(ArrayList<String> ingles) {
+//        ArrayList<String> espanyol = new ArrayList<>();
+//        try {
+//            // See comments on
+//            //   https://developers.google.com/resources/api-libraries/documentation/translate/v2/java/latest/
+//            // on options to set
+//            Translate t = new Translate.Builder(
+//                    AndroidHttp.newCompatibleTransport()
+//                    , com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), null)
+//                    //Need to update this to your App-Name
+//                    .setApplicationName("Vision-Technow")
+//                    .build();
+//
+//            Translate.Translations.List list = t.new Translations().list(
+//                    ingles,
+//                    //Target language
+//                    "ES");
+//            //Set your API-Key from https://console.developers.google.com/
+//            list.setKey("AIzaSyC4iz3wb9_4QEKdePfAfHvxXvWl6wT2bjE");
+//            TranslationsListResponse response = list.execute();
+//            for (TranslationsResource tr : response.getTranslations()) {
+//                espanyol.add(tr.getTranslatedText());
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return espanyol;
+//    }
 
     /**
      * Clase que se encarga de la escucha de los swips que se realiza desde
@@ -634,4 +624,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_login,menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        if(item.getTitle().equals("Iniciar sesion")){
+            mostrarDialogoDeLogin();
+        }else if(item.getTitle().equals("Crear cuenta en vision")){
+
+        }
+        return true;
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if(progressDialog!=null){
+            progressDialog.dismiss();
+        }
+
+    }
+
+    private void mostrarDialogoDeLogin(){
+        dialogoPersonalizadoLogin = new DialogoPersonalizadoLogin(this,bd);
+        dialogoPersonalizadoLogin.show(getSupportFragmentManager(),"login");
+    }
 }
