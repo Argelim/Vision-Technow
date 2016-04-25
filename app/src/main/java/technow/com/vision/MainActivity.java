@@ -52,6 +52,7 @@ import java.util.List;
 import cz.msebera.android.httpclient.HttpEntity;
 import cz.msebera.android.httpclient.HttpResponse;
 import cz.msebera.android.httpclient.client.ClientProtocolException;
+import cz.msebera.android.httpclient.client.HttpClient;
 import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
 import cz.msebera.android.httpclient.client.methods.HttpGet;
@@ -353,24 +354,39 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                         .seContentType(ContentType.MULTIPART_FORM_DATA)
                         .addPart("imagen", fileBody)
                         .build();
-                httppost.setHeader("Authorization: ", "JWT " + usuario.getTokenKey().getToken());
+                httppost.setHeader("Authorization ", "JWT " + usuario.getTokenKey().getToken());
                 Log.d("TOKEN",usuario.getTokenKey().getToken());
                 httppost.setEntity(reqEntity);
                 HttpResponse response = httpclient.execute(httppost);
 
+                HttpGet httpGet=null;
+                Gson gson=null;
+                Type type=null;
+                List<Respuesta> respuestas=null;
                     switch (response.getStatusLine().getStatusCode()){
                         case estados.HTTP_OK:
-                            HttpGet httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
-                            httpGet.setHeader("Authorization", "JWT " + usuario.getTokenKey().getToken());
+                            httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
+                            httpGet.setHeader("Authorization ", "JWT " + usuario.getTokenKey().getToken());
                             response = httpclient.execute(httpGet);
-                            Gson gson = new Gson();
-                            Type type=new TypeToken<List<Respuesta>>(){}.getType();
-                            List<Respuesta> respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
+                            gson = new Gson();
+                            type=new TypeToken<List<Respuesta>>(){}.getType();
+                            respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
                             imagen.setDescripcion(respuestas.get(0).getDescripcion());
                             Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
                             break;
                         case estados.HTTP_FORBIDDEN:
+
                             Log.d("ACCESO","NECESITAS LOGEARTE");
+                            break;
+                        case estados.HTTP_CREATED:
+                            httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
+                            httpGet.setHeader("Authorization ", "JWT " + usuario.getTokenKey().getToken());
+                            response = httpclient.execute(httpGet);
+                            gson = new Gson();
+                            type=new TypeToken<List<Respuesta>>(){}.getType();
+                            respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
+                            imagen.setDescripcion(respuestas.get(0).getDescripcion());
+                            Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
                             break;
                         default:
                             Log.d("ACCESO",String.valueOf(response.getStatusLine().getStatusCode()));
@@ -389,6 +405,8 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                 }
             }
     }
+
+
 
 //    public void uploadImage(Uri uri, Imagen imagen) {
 //        if (uri != null) {
