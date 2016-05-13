@@ -47,6 +47,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/fab_margin"
         android:src="@android:drawable/ic_menu_camera"
+        android:contentDescription="Seleccionar imagen"
         app:layout_anchor="@id/appbarLayout"
         app:layout_anchorGravity="bottom|right|end">
 

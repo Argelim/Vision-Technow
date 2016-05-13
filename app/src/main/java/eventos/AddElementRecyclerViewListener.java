@@ -5,6 +5,8 @@ import android.support.v7.widget.RecyclerView;
 import android.view.GestureDetector;
 import android.view.View;
 
+import technow.com.vision.MainActivity;
+
 /**
  * Created by Tautvydas on 22/04/2016.
  */
@@ -24,6 +26,9 @@ public class AddElementRecyclerViewListener implements RecyclerView.OnChildAttac
 
     @Override
     public void onChildViewAttachedToWindow(View view) {
+        if (MainActivity.bandera){
+            view.requestFocus();
+        }
         view.setOnTouchListener(new TouchEvent(gestureDetector,recyclerView));
     }
 

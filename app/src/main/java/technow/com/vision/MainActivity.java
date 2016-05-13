@@ -58,6 +58,7 @@ import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
 import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
 import cz.msebera.android.httpclient.entity.ContentType;
+import cz.msebera.android.httpclient.entity.StringEntity;
 import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
 import cz.msebera.android.httpclient.entity.mime.content.FileBody;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
@@ -69,6 +70,7 @@ import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
 
 import login.Registro;
 import login.Respuesta;
+import login.Token;
 import login.Usuario;
 import sqlite.bd_sqlite;
 import vista.DialogoPersonalizadoLogin;
@@ -96,6 +98,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
     private GestureDetector gestureDetector;
     private DialogoPersonalizadoLogin dialogoPersonalizadoLogin;
     private ProgressDialog progressDialog;
+    public static boolean bandera= false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
         bd = new bd_sqlite(getApplicationContext(), "vision_technow", 1);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+
         if (fab != null) {
             fab.setOnClickListener(new OnClickListener() {
                 @Override
@@ -288,6 +292,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
             imagen.setRequestCreator(requestCreator);
             bd.insertarImagen(getApplicationContext(), imagen.getDescripcion(), imagen.getPath(), imagen.getFecha());
             recyclerView.getLayoutManager().scrollToPosition(recyclerView.getLayoutManager().getItemCount());
+            bandera=true;
             listaImagenes.addItem(imagen);
             progressDialog.dismiss();
         }
@@ -317,6 +322,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
     private void prepareToSave(final Uri data, final String nombre) {
         File file;
         File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "Vision_Technow");
+
         if (!dir.exists()) {
             dir.mkdir();
             Log.d("Creado", "OK");
@@ -342,9 +348,9 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
 
 
     private void subirImagen(Imagen imagen){
-        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(5000)
-                .setConnectTimeout(5000)
-                .setConnectionRequestTimeout(5000)
+        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(50000)
+                .setConnectTimeout(50000)
+                .setConnectionRequestTimeout(50000)
                 .build();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
             try {
@@ -363,6 +369,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                 Gson gson=null;
                 Type type=null;
                 List<Respuesta> respuestas=null;
+
                     switch (response.getStatusLine().getStatusCode()){
                         case estados.HTTP_OK:
                             httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
@@ -375,8 +382,20 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                             Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
                             break;
                         case estados.HTTP_FORBIDDEN:
+                            if(usuario!=null){
+                                HttpResponse respuesta = loggin(usuario);
+                                if (respuesta.getStatusLine().getStatusCode()==estados.HTTP_OK){
+                                    String token = EntityUtils.toString(respuesta.getEntity());
+                                    Gson gson1 = new Gson();
+                                    Token token1 = gson1.fromJson(token,Token.class);
+                                    Log.d("TOKENKEY",token1.getToken());
+                                    usuario.setTokenKey(token1);
+                                    subirImagen(imagen);
+                                }
+                            }else {
+                                mostrarDialogoDeLogin();
+                            }
 
-                            Log.d("ACCESO","NECESITAS LOGEARTE");
                             break;
                         case estados.HTTP_CREATED:
                             httpGet = new HttpGet(estados.HTTP_POST_GET_DESCRIPTION);
@@ -386,7 +405,7 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
                             type=new TypeToken<List<Respuesta>>(){}.getType();
                             respuestas = gson.fromJson(EntityUtils.toString(response.getEntity(),"UTF-8"),type);
                             imagen.setDescripcion(respuestas.get(0).getDescripcion());
-                            Log.d("RESPUESTA",respuestas.get(0).getDescripcion());
+//                            Log.d("RESPUESTA",EntityUtils.toString(response.getEntity()));
                             break;
                         default:
                             Log.d("ACCESO",String.valueOf(response.getStatusLine().getStatusCode()));
@@ -406,6 +425,33 @@ public class MainActivity extends AppCompatActivity implements DialogoPersonaliz
             }
     }
 
+
+    private HttpResponse loggin(Usuario usuario){
+        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(5000)
+                .setConnectTimeout(5000)
+                .setConnectionRequestTimeout(5000)
+                .build();
+        CloseableHttpClient httpclient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+        HttpPost httppost = new HttpPost(estados.HTTP_POST_LOGIN_TOKEN);
+        StringEntity stringEntity=null;
+        HttpResponse httpResponse=null;
+        String contenido = new Gson().toJson(usuario);
+        try {
+            stringEntity = new StringEntity(contenido);
+            httppost.addHeader("content-type","application/json");
+            httppost.setEntity(stringEntity);
+            httpResponse = httpclient.execute(httppost);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                httpclient.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return httpResponse;
+    }
 
 
 //    public void uploadImage(Uri uri, Imagen imagen) {

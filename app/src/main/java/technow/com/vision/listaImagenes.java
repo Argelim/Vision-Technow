@@ -35,6 +35,9 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.lista,parent,false);
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+        view.setClickable(true);
         return new ViewHolder(view);
     }
 
@@ -44,6 +47,7 @@ public class listaImagenes extends RecyclerView.Adapter<listaImagenes.ViewHolder
         MainActivity.imagens.get(position).getRequestCreator().into(holder.imageView);
         holder.fecha.setText(MainActivity.imagens.get(position).getFecha());
         holder.imageView.setOnClickListener(new AbrirImagen(context,position));
+        holder.imageView.setContentDescription("Imagen "+position+" seleccionada");
         Log.d("VISTA","SE HA CREADO LA VISTA");
     }
 
